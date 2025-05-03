@@ -16,8 +16,8 @@ SPEED_CAP = 30
 FONT_NAME = os.path.join("cascadia-code", "Cascadia.ttf")
 
 TEAM_COLORS = [
-    [255, 0, 0],
-    [0, 0, 255]]
+    [166, 10, 28],
+    [15, 10, 166]]
 
 class UIElement:
     width = 360
@@ -48,15 +48,29 @@ class UIElement:
         self.y = y
         self.character = character
 
+
+    def first_draw(self, draw):
+        if self.character.game.video_mode:
+            colors = [color for color in TEAM_COLORS[self.character.team]]
+            colors.append(255)
+            colors = tuple(colors)
+            print(colors)
+            draw.polygon([self.x, self.y, self.width, self.height], fill=colors)
+            draw.polygon([self.x+self.border_width,
+                          self.y+self.border_width,
+                          self.y+self.border_width,
+                          self.height-(2*self.border_width)], fill=(255,255,255,255))
+
     def display(self):
         screen = self.character.game.screen
         border_rect = pygame.Rect(self.x, self.y, self.width, self.height)
         inner_rect = pygame.Rect(self.x+self.border_width,
                                  self.y+self.border_width,
-                                 self.width-(2*self.border_width),
+                                 self.y+self.border_width,
                                  self.height-(2*self.border_width))
-        pygame.draw.rect(screen, "black", border_rect)
-        pygame.draw.rect(screen, "white", inner_rect)
+        if self.character.game.pygame_mode:
+            pygame.draw.rect(screen, pygame.Color(*TEAM_COLORS[self.character.team]), border_rect)
+            pygame.draw.rect(screen, pygame.Color(255,255,255), inner_rect)
         
         self.draw_bar(screen, self.character.hp, self.character.get_max_hp(), self.x+self.health_bar_x_offset, self.y+self.health_bar_y_offset, self.health_bar_width, self.health_bar_height, self.health_colors)
         self.character.game.draw_text(

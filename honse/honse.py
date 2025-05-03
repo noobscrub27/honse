@@ -59,6 +59,18 @@ class HonseGame:
         self.current_frame_draw = None
         self.load_map()
 
+    def first_draw(self):
+        if self.video_mode:
+            image = Image.new(
+                mode="RGB",
+                size=(self.SCREEN_WIDTH, self.SCREEN_HEIGHT),
+                color=(255,255,255))
+            Image.Image.paste(image, self.background_image, (0,0))
+            draw = ImageDraw.Draw(image, "RGBA")
+            for character in self.characters:
+                character.ui_element.first_draw(draw)
+            self.background_image = image
+
     def show_display(self):
         if self.pygame_mode:
             pygame.display.flip()
@@ -69,12 +81,10 @@ class HonseGame:
     def draw_background(self):
         if self.pygame_mode:
             self.screen.fill("white")
+            self.screen.blit(self.background_surface, (0,0))
         if self.video_mode:
-            self.current_frame_image = Image.new(
-                mode="RGB",
-                size=(self.SCREEN_WIDTH, self.SCREEN_HEIGHT),
-                color=(255,255,255))
-        self.draw_image(0, 0, self.background_surface, self.background_image)
+            self.current_frame_image = self.background_image
+            self.current_frame_draw = ImageDraw.Draw(self.current_frame_image, "RGBA")
 
     def draw_circle(self, x, y, radius, rgba):
         if self.pygame_mode:
@@ -244,6 +254,7 @@ class HonseGame:
     # Lina functions end here
 
     def main_loop(self):
+        self.first_draw()
         while self.running:
             self.frame_count += 1
             # poll for events
@@ -337,7 +348,7 @@ basic_moveset = [
     honse_pokemon.moves["Tackle"],
     honse_pokemon.moves["Water Gun"],
     honse_pokemon.moves["Giga Impact"]]
-game = HonseGame("map02.json", "map02.png", True, False, 1920, 1080, 1000)
+game = HonseGame("map02.json", "map02.png", False, True, 1920, 1080, 0)
 game.add_character(
     "Saurbot", 0, 100,
     {"HP": 77, "ATK": 5, "DEF": 107, "SPA": 5, "SPD": 104, "SPE": 20},
