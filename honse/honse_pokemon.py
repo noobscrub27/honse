@@ -5,9 +5,8 @@ import math
 import honse_data
 import honse_particles
 import enum
-from PIL import Image
 import numpy as np
-import enum
+from PIL import Image
 
 class MoveCategories(enum.Enum):
     PHYSICAL = 0
@@ -139,8 +138,12 @@ class Character():
         self.base_stats = stats
         self.moves = moves
         self.cooldowns = [0, 0, 0, 0]
+        # moves start on partial cooldown, but not less than 3 seconds
         for i in range(len(self.moves)):
             self.on_cooldown(i)
+            self.cooldowns[i] /= 2
+            if self.cooldowns[i] > 0 and self.cooldowns[i] < 180:
+                self.cooldowns[i] = 180
         self.types = types
         # speed is pixels/frame
         self.current_speed = 0
@@ -175,15 +178,23 @@ class Character():
                 break
 
     def get_image(self):
-        from PIL import Image
         image=Image.open(self.image_name)
         cropped_image = image.getbbox()
         cropped_image = image.crop(cropped_image)
-        self.surface = pygame.image.fromstring(cropped_image.tobytes(), cropped_image.size, cropped_image.mode).convert_alpha()
-        self.intangible_surface = self.surface.copy()
-        self.intangible_surface.fill((255, 255, 255, 190), None, pygame.BLEND_RGBA_MULT)
-        self.fainted_surface = self.surface.copy()
-        self.fainted_surface.fill((255, 127, 127, 85), None, pygame.BLEND_RGBA_MULT)
+        self.width, self.height = cropped_image.size
+        self.visual_circle_radius = max(25, (math.ceil(max(self.width, self.height) / 2) + 3))
+        self.radius = self.visual_circle_radius
+        r,g,b,a = cropped_image.split()
+        self.image = cropped_image
+        self.intangible_image = Image.merge("RGBA", (r, g, b,
+                                                     a.point(lambda x: int(x*2/3))))
+        self.fainted_image = Image.merge("RGBA", (r,
+                                                  g.point(lambda x: int(x*1/2)),
+                                                  b.point(lambda x: int(x*1/2)),
+                                                  a.point(lambda x: int(x*1/3))))
+        self.surface = pygame.image.fromstring(self.image.tobytes(), self.image.size, self.image.mode).convert_alpha()
+        self.intangible_surface = pygame.image.fromstring(self.intangible_image.tobytes(), self.intangible_image.size, self.intangible_image.mode).convert_alpha()
+        self.fainted_surface = pygame.image.fromstring(self.fainted_image.tobytes(), self.fainted_image.size, self.fainted_image.mode).convert_alpha()
 
     def same_team(self, other):
         return self.team == other.team
@@ -289,7 +300,11 @@ class Character():
                 speed_mod = self.get_drag()
             self.current_speed += (speed - self.current_speed) * speed_mod
         self.current_speed = min(self.current_speed, honse_data.SPEED_CAP)
-        self.velocity = (self.velocity / np.linalg.norm(self.velocity)) * self.game.scale_to_fps(self.current_speed)
+        norm = np.linalg.norm(self.velocity)
+        if norm == 0:
+            np.zeros_like(self.velocity)
+        else:
+            self.velocity = (self.velocity / np.linalg.norm(self.velocity)) * self.current_speed
 
     def use_move(self, target):
         for i, move in enumerate(self.moves):
@@ -373,15 +388,20 @@ class Character():
     def draw(self):
         if self.is_fainted():
             surface = self.fainted_surface
+            image = self.fainted_image
         elif (self.is_intangible() or self.is_invulnerabile()) and not self.in_hitstop():
             surface = self.intangible_surface
+            image = self.intangible_image
         else:
             surface = self.surface
-        surface_rect = surface.get_rect()
-        surface_rect.center = (self.position[0], self.position[1])
-        self.game.screen.blit(surface, surface_rect)
-
-
+            image = self.image
+        if not self.is_fainted():
+            color = (honse_data.TEAM_COLORS[self.team][0],
+                     honse_data.TEAM_COLORS[self.team][1],
+                     honse_data.TEAM_COLORS[self.team][2],
+                     85)
+            self.game.draw_circle(self.position[0], self.position[1], self.visual_circle_radius, color)
+        self.game.draw_image(self.position[0]-(self.width//2), self.position[1]-(self.height//2), surface, image)
 
 class Move:
     def __init__(self, name, pkmn_type, category, cooldown):
@@ -398,13 +418,14 @@ class Move:
 
 
 class BasicAttack(Move):
-    def __init__(self, name, pkmn_type, category, cooldown, power, hitstop, invulnerability, base_knockback, knockback_scaling):
+    def __init__(self, name, pkmn_type, category, cooldown, power, hitstop, invulnerability, base_knockback, knockback_scaling, animation):
         super().__init__(name, pkmn_type, category, cooldown)
         self.power = power
         self.hitstop = hitstop
         self.invulnerability = invulnerability
         self.base_knockback = base_knockback
         self.knockback_scaling = knockback_scaling
+        self.animation = animation
 
     def knockback_modifier(self, current_hp, damage):
         # knockback is multiplied by knockback scaling
@@ -414,17 +435,7 @@ class BasicAttack(Move):
         knockback_modification = 1 + ((self.knockback_scaling*damage)/current_hp)
         return knockback_modification
 
-    def animation(self, game, x, y):
-        for i in range(random.randint(8,12)):
-            size = random.randint(8,12)
-            x_speed = random.randint(4, 8) * random.choice([-1, 1])
-            y_speed = random.randint(4, 8) * random.choice([-1, 1])
-            particle = honse_particles.RectParticle(
-                x, y, x_speed, y_speed,
-                size, size, -0.4, -0.4, random.randint(0,20),
-                235, random.randint(100,200), 52, 255, 10)
-            
-            game.particle_spawner.add_particles(particle)
+    
 
     def on_use(self, user, **kwargs):
         target = kwargs["target"]
@@ -437,16 +448,18 @@ class BasicAttack(Move):
         target.hp -= damage
         target.hitstop = hitstop
         target.current_speed += knockback
-        user.game.display_message(f"{user.name} used {self.name}!", 0, [0,0,0])
+        user.game.display_message(f"{user.name} used {self.name}!", 24, [0,0,0])
         effectiveness_quote = get_type_effectiveness_quote(self, target)
         if effectiveness_quote:
-            user.game.display_message(effectiveness_quote, 1, [0,0,0])
-        user.game.display_message(f"{target.name} took {damage} damage.", 1, [0,0,0])
+            user.game.display_message(effectiveness_quote, 16, [0,0,0])
+        user.game.display_message(f"{target.name} took {damage} damage.", 16, [0,0,0])
         if target.hp <= 0:
-            user.game.display_message(f"{target.name} fainted!", 0, [127,0,0])
+            user.game.display_message(f"{target.name} fainted!", 24, [127,0,0])
         self.animation(user.game, target.position[0], target.position[1])
         return True
 
 moves = {
-    "Tackle": BasicAttack("Tackle", pokemon_types["Normal"], MoveCategories.PHYSICAL, 150, 45, 4, 0, 10, 1)
+    "Tackle": BasicAttack("Tackle", pokemon_types["Normal"], MoveCategories.PHYSICAL, 900, 45, 4, 0, 8, 1, honse_particles.impact_animation),
+    "Water Gun": BasicAttack("Water Gun", pokemon_types["Water"], MoveCategories.SPECIAL, 900, 40, 4, 0, 4, 0.75, honse_particles.splash_animation),
+    "Giga Impact": BasicAttack("Giga Impact", pokemon_types["Normal"], MoveCategories.PHYSICAL, 3600, 150, 20, 0, 16, 2, honse_particles.impact_animation)
     }

@@ -10,7 +10,8 @@ import honse_data
 # the second parameter is the the number of frames the particle has been alive / it's maximum lifetime. it will always be in the range of 0 to 1.
 # the functions may use one, both, or neither of these parameters
 class CircleParticle:
-    def __init__(self, x, y, x_speed, y_speed, radius, growth, red, green, blue, alpha, lifetime=None):
+    def __init__(self, game, x, y, x_speed, y_speed, radius, growth, red, green, blue, alpha, lifetime=None, death_function=None):
+        self.game = game
         self.x = x
         self.y = y
         self.radius = radius
@@ -25,8 +26,8 @@ class CircleParticle:
         self.max_lifetime = lifetime
         self.remaining_lifetime = lifetime
         self.lived_lifetime = 0
-        # this is a failsafe, and should always be changed later
-        self.color = 'white'
+        self.color = (255,255,255,255)
+        self.death_function = death_function
 
     def turn_into_function(self, x):
         if type(x) in [int, float]:
@@ -57,30 +58,33 @@ class CircleParticle:
 
 
     def kill(self):
+        if self.death_function is not None:
+            self.death_function(self.game, self.x, self.y)
         del self
 
-    def update(self, game):
+    def update(self):
         lifetime_remaining = self.get_lifetime_remaining()
-        self.x += game.scale_to_fps(self.x_speed(self.lived_lifetime, lifetime_remaining))
-        self.y += game.scale_to_fps(self.y_speed(self.lived_lifetime, lifetime_remaining))
+        self.x += self.x_speed(self.lived_lifetime, lifetime_remaining)
+        self.y += self.y_speed(self.lived_lifetime, lifetime_remaining)
         self.update_size(lifetime_remaining)
-        self.color = pygame.Color(
+        self.color = (
             self.red(self.lived_lifetime, lifetime_remaining),
             self.green(self.lived_lifetime, lifetime_remaining),
             self.blue(self.lived_lifetime, lifetime_remaining),
             self.alpha(self.lived_lifetime, lifetime_remaining))
 
-    def draw(self, screen):
-        pygame.draw.circle(screen, self.color, (self.x, self.y), int(self.radius))
+    def draw(self):
+        if self.radius >= 1:
+            self.game.draw_circle(self.x, self.y, self.radius, self.color)
 
 class RectParticle(CircleParticle):
-    def __init__(self, x, y, x_speed, y_speed, width, height, x_growth, y_growth, rotation_degrees, red, green, blue, alpha, lifetime=None):
+    def __init__(self, game, x, y, x_speed, y_speed, width, height, x_growth, y_growth, rotation_degrees, red, green, blue, alpha, lifetime=None, death_function=None):
         self.width = width
         self.height = height
         self.x_growth = self.turn_into_function(x_growth)
         self.y_growth = self.turn_into_function(y_growth)
         self.rotation_degrees = self.turn_into_function(rotation_degrees)
-        super().__init__(x, y, x_speed, y_speed, None, None, red, green, blue, alpha, lifetime)
+        super().__init__(game, x, y, x_speed, y_speed, None, None, red, green, blue, alpha, lifetime, death_function)
 
     def update_size(self, lifetime_remaining):
         self.width += self.x_growth(self.lived_lifetime, lifetime_remaining)
@@ -93,22 +97,10 @@ class RectParticle(CircleParticle):
             return self.remaining_lifetime > 0
         return True
 
-    def draw(self, screen):
-        rotation = self.rotation_degrees(self.lived_lifetime, self.get_lifetime_remaining())
-        if rotation % 360 != 0:
-            try:
-                surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            except pygame.error:
-                print((self.width, self.height))
-                return
-            surface.fill(self.color)
-            surface = pygame.transform.rotate(surface, rotation)
-            rect = surface.get_rect(center=(self.x,self.y))
-            screen.blit(surface, (rect.x, rect.y)) 
-        else:
-            rect = pygame.Rect(0, 0, self.width, self.height)
-            rect.center = (self.x, self.y)
-            pygame.draw.rect(screen, self.color, rect)
+    def draw(self):
+        if self.width >= 1 and self.height >= 1:
+            rotation = self.rotation_degrees(self.lived_lifetime, self.get_lifetime_remaining())
+            self.game.draw_rectangle(self.x, self.y, self.width, self.height, rotation, self.color)
 
 class ParticleSpawner:
     def __init__(self, game):
@@ -119,8 +111,8 @@ class ParticleSpawner:
         if self.particles:
             self.delete_particles()
             for particle in self.particles:
-                particle.draw(self.game.screen)
-                particle.update(self.game)
+                particle.draw()
+                particle.update()
                 particle.update_lifetime()
                 
     def add_particles(self, particle):
@@ -171,14 +163,57 @@ class SlashParticleSpawner(ParticleSpawner):
             del self
 
 '''
-def basic_collision(location, game):
+
+def impact_animation(game, x, y):
     for i in range(random.randint(8,12)):
         size = random.randint(8,12)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
         y_speed = random.randint(4, 8) * random.choice([-1, 1])
         particle = RectParticle(
-            location[0], location[1], x_speed, y_speed,
+            game, x, y, x_speed, y_speed,
             size, size, -0.4, -0.4, random.randint(0,20),
             235, random.randint(100,200), 52, 255, 10)
-            
+        game.particle_spawner.add_particles(particle)
+
+def large_impact_animation(game, x, y):
+    for i in range(random.randint(20,30)):
+        size = random.randint(12,16)
+        x_speed = random.randint(4, 8) * random.choice([-1, 1])
+        y_speed = random.randint(4, 8) * random.choice([-1, 1])
+        particle = RectParticle(
+            game, x, y, x_speed, y_speed,
+            size, size, -0.4, -0.4, random.randint(0,20),
+            235, random.randint(100,200), 52, 255, 10)
+        game.particle_spawner.add_particles(particle)
+
+
+def spark_animation(game, x, y):
+    for i in range(random.randint(3,5)):
+        size = random.randint(3,4)
+        x_speed = random.randint(2, 4) * random.choice([-1, 1])
+        y_speed = random.randint(2, 4) * random.choice([-1, 1])
+        particle = RectParticle(
+            game, x, y, x_speed, y_speed,
+            size, size, -0.2, -0.2, random.randint(0,45),
+            random.randint(235,250), random.randint(185,225), random.randint(20,80), 255, 10)
+        game.particle_spawner.add_particles(particle)
+
+def splash_animation(game, x, y):
+    for i in range(random.randint(8,12)):
+        size = random.randint(8,12)
+        x_speed = random.randint(4, 8) * random.choice([-1, 1])
+        y_speed = lambda a, b: random.randint(20, 30) * (0.5-b)
+        particle = CircleParticle(
+            game, x, y, x_speed, y_speed, size, -0.2,
+            50, random.randint(70,170), 230, 255, random.randint(24,36))
+        game.particle_spawner.add_particles(particle)
+
+def flame_animation(game, x, y):
+    for i in range(random.randint(8,12)):
+        size = random.randint(8,12)
+        x_speed = random.randint(4, 8) * random.choice([-1, 1])
+        y_speed = lambda a, b: random.randint(20, 30) * (0.5-b)
+        particle = CircleParticle(
+            x, y, x_speed, y_speed, size, -0.2,
+            50, random.randint(70,170), 230, 255, random.randint(24,36))
         game.particle_spawner.add_particles(particle)
