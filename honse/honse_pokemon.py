@@ -8,23 +8,22 @@ import enum
 import numpy as np
 from PIL import Image
 
+
 class MoveCategories(enum.Enum):
     PHYSICAL = 0
     SPECIAL = 1
     STATUS = 2
 
-TYPE_EFFECTIVENESS = [
-    0.25,
-    2/3,
-    1,
-    1.5]
+
+TYPE_EFFECTIVENESS = [0.25, 2 / 3, 1, 1.5]
 
 TYPE_EFFECTIVENESS_QUOTES = [
     "It barely had any effect.",
     "It's not very effective.",
     "",
-    "It's super effective!"
-    ]
+    "It's super effective!",
+]
+
 
 def get_type_effectiveness_quote(move, target):
     effectiveness = target.get_type_matchup(move.type)
@@ -45,15 +44,18 @@ def damage_formula(move, attacker, defender, spread=False):
     else:
         attack = attacker.get_special_attack()
         defense = defender.get_special_defense()
-    damage = ((((((2*attacker.level)/5)+2) * move.power * (attack/defense))/50)+2)
+    damage = (
+        ((((2 * attacker.level) / 5) + 2) * move.power * (attack / defense)) / 50
+    ) + 2
     # spread is only true for the non-primary target of spread moves
     if spread:
         damage *= 0.5
     damage *= defender.get_type_matchup(move.type)
     if move.type in attacker.types:
         damage *= 1.5
-    damage *= random.randint(85,100) / 100
+    damage *= random.randint(85, 100) / 100
     return max(1, math.floor(damage))
+
 
 class EffectTypes(enum.Enum):
     ATTACK_MODIFICATION = 1
@@ -64,21 +66,19 @@ class EffectTypes(enum.Enum):
     ACCELERATION_MODIFICATION = 6
     DRAG_MODIFICATION = 7
 
-stats = {
-    "HP": 100,
-    "ATK": 100,
-    "DEF": 100,
-    "SPA": 100,
-    "SPD": 100,
-    "SPE": 5}
+
+stats = {"HP": 100, "ATK": 100, "DEF": 100, "SPA": 100, "SPD": 100, "SPE": 5}
 
 pokemon_types = {}
+
+
 class PokemonType:
     def __init__(self, name):
         self.name = name
         self.weaknesses = []
         self.resistances = []
         self.immunities = []
+
 
 with open("fnf-types.csv", "r") as f:
     lines = f.readlines()
@@ -96,23 +96,34 @@ with open("fnf-types.csv", "r") as f:
             elif matchup == "0":
                 pokemon_types[type_order[j]].immunities.append(current_type)
 
+
 def speed_formula(base, level, ivs=31, evs=0, nature=1):
-    return max(1,15*(base/255))
+    return max(1, 15 * (base / 255))
+
 
 def hp_formula(base, level, ivs=31, evs=0):
-    return math.floor(((2*base+ivs+math.floor(evs/4))*level)/100) + level + 10
+    return (
+        math.floor(((2 * base + ivs + math.floor(evs / 4)) * level) / 100) + level + 10
+    )
+
 
 def other_stat_formula(base, level, ivs=31, evs=0, nature=1):
-    return math.floor((math.floor(((2*base+ivs+math.floor(evs/4))*level)/100) + 5) * nature)
+    return math.floor(
+        (math.floor(((2 * base + ivs + math.floor(evs / 4)) * level) / 100) + 5)
+        * nature
+    )
+
 
 def collision_check(terrain_map, rect):
     try:
-        return terrain_map.get_at(rect.center) == pygame.Color(0,0,0,255)
+        return terrain_map.get_at(rect.center) == pygame.Color(0, 0, 0, 255)
     except IndexError:
         return True
 
+
 class Effect:
     effect_types = []
+
     def __init__(self, inflicted_by, inflicted_upon):
         self.inflicted_by = inflicted_by
         self.inflicted_upon = inflicted_upon
@@ -122,8 +133,11 @@ class Effect:
             return
         # modify code goes here
 
-class Character():
-    def __init__(self, game, name, team, level, stats, moves, types, image, teammate_id):
+
+class Character:
+    def __init__(
+        self, game, name, team, level, stats, moves, types, image, teammate_id
+    ):
         self.game = game
         angle = random.uniform(0, 2 * np.pi)
         velocity = [np.cos(angle), np.sin(angle)]
@@ -147,7 +161,7 @@ class Character():
         self.types = types
         # speed is pixels/frame
         self.current_speed = 0
-        self.direction = random.uniform(0,360)
+        self.direction = random.uniform(0, 360)
         # hitstop, intangibility, and invulnerability are measured in frames
         self.invulnerability = 0
         self.intangibility = 0
@@ -159,8 +173,10 @@ class Character():
         self.hp = self.get_max_hp()
         self.image_name = image
         self.get_image()
-        ui_x = self.game.SCREEN_WIDTH * (self.teammate_id*3)/16
-        ui_y = self.game.SCREEN_HEIGHT - ((self.game.SCREEN_HEIGHT/8)*(2-self.team))
+        ui_x = self.game.SCREEN_WIDTH * (self.teammate_id * 3) / 16
+        ui_y = self.game.SCREEN_HEIGHT - (
+            (self.game.SCREEN_HEIGHT / 8) * (2 - self.team)
+        )
         self.ui_element = honse_data.UIElement(ui_x, ui_y, self)
         self.spawn_in()
 
@@ -178,23 +194,41 @@ class Character():
                 break
 
     def get_image(self):
-        image=Image.open(self.image_name)
+        image = Image.open(self.image_name)
         cropped_image = image.getbbox()
         cropped_image = image.crop(cropped_image)
         self.width, self.height = cropped_image.size
-        self.visual_circle_radius = max(25, (math.ceil(max(self.width, self.height) / 2) + 3))
+        self.visual_circle_radius = max(
+            25, (math.ceil(max(self.width, self.height) / 2) + 3)
+        )
         self.radius = self.visual_circle_radius
-        r,g,b,a = cropped_image.split()
+        r, g, b, a = cropped_image.split()
         self.image = cropped_image
-        self.intangible_image = Image.merge("RGBA", (r, g, b,
-                                                     a.point(lambda x: int(x*2/3))))
-        self.fainted_image = Image.merge("RGBA", (r,
-                                                  g.point(lambda x: int(x*1/2)),
-                                                  b.point(lambda x: int(x*1/2)),
-                                                  a.point(lambda x: int(x*1/3))))
-        self.surface = pygame.image.fromstring(self.image.tobytes(), self.image.size, self.image.mode).convert_alpha()
-        self.intangible_surface = pygame.image.fromstring(self.intangible_image.tobytes(), self.intangible_image.size, self.intangible_image.mode).convert_alpha()
-        self.fainted_surface = pygame.image.fromstring(self.fainted_image.tobytes(), self.fainted_image.size, self.fainted_image.mode).convert_alpha()
+        self.intangible_image = Image.merge(
+            "RGBA", (r, g, b, a.point(lambda x: int(x * 2 / 3)))
+        )
+        self.fainted_image = Image.merge(
+            "RGBA",
+            (
+                r,
+                g.point(lambda x: int(x * 1 / 2)),
+                b.point(lambda x: int(x * 1 / 2)),
+                a.point(lambda x: int(x * 1 / 3)),
+            ),
+        )
+        self.surface = pygame.image.fromstring(
+            self.image.tobytes(), self.image.size, self.image.mode
+        ).convert_alpha()
+        self.intangible_surface = pygame.image.fromstring(
+            self.intangible_image.tobytes(),
+            self.intangible_image.size,
+            self.intangible_image.mode,
+        ).convert_alpha()
+        self.fainted_surface = pygame.image.fromstring(
+            self.fainted_image.tobytes(),
+            self.fainted_image.size,
+            self.fainted_image.mode,
+        ).convert_alpha()
 
     def same_team(self, other):
         return self.team == other.team
@@ -222,7 +256,6 @@ class Character():
                 damage_numerator *= 2
                 damage_denominator *= 3
         return damage_numerator / damage_denominator
-        
 
     def is_fainted(self):
         if self.hp < 0:
@@ -262,25 +295,31 @@ class Character():
     def get_attack(self):
         attack = other_stat_formula(self.base_stats["ATK"], self.level)
         return self.apply_stat_modifications(EffectTypes.ATTACK_MODIFICATION, attack)
-        
+
     def get_defense(self):
         defense = other_stat_formula(self.base_stats["DEF"], self.level)
         return self.apply_stat_modifications(EffectTypes.DEFENSE_MODIFICATION, defense)
 
     def get_special_attack(self):
         special_attack = other_stat_formula(self.base_stats["SPA"], self.level)
-        return self.apply_stat_modifications(EffectTypes.SPECIAL_ATTACK_MODIFICATION, special_attack)
+        return self.apply_stat_modifications(
+            EffectTypes.SPECIAL_ATTACK_MODIFICATION, special_attack
+        )
 
     def get_special_defense(self):
         special_defense = other_stat_formula(self.base_stats["SPD"], self.level)
-        return self.apply_stat_modifications(EffectTypes.SPECIAL_DEFENSE_MODIFICATION, special_defense)
+        return self.apply_stat_modifications(
+            EffectTypes.SPECIAL_DEFENSE_MODIFICATION, special_defense
+        )
 
     def get_speed(self):
         speed = speed_formula(self.base_stats["SPE"], self.level)
         return self.apply_stat_modifications(EffectTypes.SPEED_MODIFICATION, speed)
 
     def get_acceleration(self):
-        return self.apply_stat_modifications(EffectTypes.ACCELERATION_MODIFICATION, self.acceleration)
+        return self.apply_stat_modifications(
+            EffectTypes.ACCELERATION_MODIFICATION, self.acceleration
+        )
 
     def get_drag(self):
         return self.apply_stat_modifications(EffectTypes.DRAG_MODIFICATION, self.drag)
@@ -304,7 +343,9 @@ class Character():
         if norm == 0:
             np.zeros_like(self.velocity)
         else:
-            self.velocity = (self.velocity / np.linalg.norm(self.velocity)) * self.current_speed
+            self.velocity = (
+                self.velocity / np.linalg.norm(self.velocity)
+            ) * self.current_speed
 
     def use_move(self, target):
         for i, move in enumerate(self.moves):
@@ -359,6 +400,7 @@ class Character():
         if overlap > 0:
             self.position += axis * (overlap / 2)
             other.position -= axis * (overlap / 2)
+
     # Lina functions end here
 
     def update(self):
@@ -369,7 +411,7 @@ class Character():
             self.tick_invulnerability()
             self.update_current_speed()
         if self.is_fainted():
-            self.cooldowns = [0,0,0,0]
+            self.cooldowns = [0, 0, 0, 0]
         else:
             self.tick_cooldowns()
 
@@ -380,7 +422,13 @@ class Character():
         cell_y = int(self.position[1]) // self.game.cell_size
         # Lina code
         nearby_walls = sum(
-            (self.game.wall_grid.get((i,j), []) for i in range (cell_x-1, cell_x+2) for j in range(cell_y-1, cell_y+2)), [])
+            (
+                self.game.wall_grid.get((i, j), [])
+                for i in range(cell_x - 1, cell_x + 2)
+                for j in range(cell_y - 1, cell_y + 2)
+            ),
+            [],
+        )
         for wall in nearby_walls:
             self.collide_with_wall(wall)
         self.position += self.velocity
@@ -389,19 +437,31 @@ class Character():
         if self.is_fainted():
             surface = self.fainted_surface
             image = self.fainted_image
-        elif (self.is_intangible() or self.is_invulnerabile()) and not self.in_hitstop():
+        elif (
+            self.is_intangible() or self.is_invulnerabile()
+        ) and not self.in_hitstop():
             surface = self.intangible_surface
             image = self.intangible_image
         else:
             surface = self.surface
             image = self.image
         if not self.is_fainted():
-            color = (honse_data.TEAM_COLORS[self.team][0],
-                     honse_data.TEAM_COLORS[self.team][1],
-                     honse_data.TEAM_COLORS[self.team][2],
-                     85)
-            self.game.draw_circle(self.position[0], self.position[1], self.visual_circle_radius, color)
-        self.game.draw_image(self.position[0]-(self.width//2), self.position[1]-(self.height//2), surface, image)
+            color = (
+                honse_data.TEAM_COLORS[self.team][0],
+                honse_data.TEAM_COLORS[self.team][1],
+                honse_data.TEAM_COLORS[self.team][2],
+                85,
+            )
+            self.game.draw_circle(
+                self.position[0], self.position[1], self.visual_circle_radius, color
+            )
+        self.game.draw_image(
+            self.position[0] - (self.width // 2),
+            self.position[1] - (self.height // 2),
+            surface,
+            image,
+        )
+
 
 class Move:
     def __init__(self, name, pkmn_type, category, cooldown):
@@ -411,14 +471,26 @@ class Move:
         self.cooldown = cooldown
 
     def on_use(self, user, **kwargs):
-       self.send_message(f"{user.name} used {self.name}!")
+        self.send_message(f"{user.name} used {self.name}!")
 
     def send_message(self, text):
         print(text)
 
 
 class BasicAttack(Move):
-    def __init__(self, name, pkmn_type, category, cooldown, power, hitstop, invulnerability, base_knockback, knockback_scaling, animation):
+    def __init__(
+        self,
+        name,
+        pkmn_type,
+        category,
+        cooldown,
+        power,
+        hitstop,
+        invulnerability,
+        base_knockback,
+        knockback_scaling,
+        animation,
+    ):
         super().__init__(name, pkmn_type, category, cooldown)
         self.power = power
         self.hitstop = hitstop
@@ -432,10 +504,8 @@ class BasicAttack(Move):
         # knockback scaling is equal to 1+((knockback_scaling * damage)/current_hp)
         # damage cannot exceed current HP
         # this is also used for hitstop
-        knockback_modification = 1 + ((self.knockback_scaling*damage)/current_hp)
+        knockback_modification = 1 + ((self.knockback_scaling * damage) / current_hp)
         return knockback_modification
-
-    
 
     def on_use(self, user, **kwargs):
         target = kwargs["target"]
@@ -448,18 +518,52 @@ class BasicAttack(Move):
         target.hp -= damage
         target.hitstop = hitstop
         target.current_speed += knockback
-        user.game.display_message(f"{user.name} used {self.name}!", 24, [0,0,0])
+        user.game.display_message(f"{user.name} used {self.name}!", 24, [0, 0, 0])
         effectiveness_quote = get_type_effectiveness_quote(self, target)
         if effectiveness_quote:
-            user.game.display_message(effectiveness_quote, 16, [0,0,0])
-        user.game.display_message(f"{target.name} took {damage} damage.", 16, [0,0,0])
+            user.game.display_message(effectiveness_quote, 16, [0, 0, 0])
+        user.game.display_message(f"{target.name} took {damage} damage.", 16, [0, 0, 0])
         if target.hp <= 0:
-            user.game.display_message(f"{target.name} fainted!", 24, [127,0,0])
+            user.game.display_message(f"{target.name} fainted!", 24, [127, 0, 0])
         self.animation(user.game, target.position[0], target.position[1])
         return True
 
+
 moves = {
-    "Tackle": BasicAttack("Tackle", pokemon_types["Normal"], MoveCategories.PHYSICAL, 900, 45, 4, 0, 8, 1, honse_particles.impact_animation),
-    "Water Gun": BasicAttack("Water Gun", pokemon_types["Water"], MoveCategories.SPECIAL, 900, 40, 4, 0, 4, 0.75, honse_particles.splash_animation),
-    "Giga Impact": BasicAttack("Giga Impact", pokemon_types["Normal"], MoveCategories.PHYSICAL, 3600, 150, 20, 0, 16, 2, honse_particles.impact_animation)
-    }
+    "Tackle": BasicAttack(
+        "Tackle",
+        pokemon_types["Normal"],
+        MoveCategories.PHYSICAL,
+        900,
+        45,
+        4,
+        0,
+        8,
+        1,
+        honse_particles.impact_animation,
+    ),
+    "Water Gun": BasicAttack(
+        "Water Gun",
+        pokemon_types["Water"],
+        MoveCategories.SPECIAL,
+        900,
+        40,
+        4,
+        0,
+        4,
+        0.75,
+        honse_particles.splash_animation,
+    ),
+    "Giga Impact": BasicAttack(
+        "Giga Impact",
+        pokemon_types["Normal"],
+        MoveCategories.PHYSICAL,
+        3600,
+        150,
+        20,
+        0,
+        16,
+        2,
+        honse_particles.impact_animation,
+    ),
+}
