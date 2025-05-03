@@ -194,7 +194,7 @@ class Character:
                 break
 
     def get_image(self):
-        image = Image.open(self.image_name)
+        image = Image.open(self.image_name).convert('RGBA')
         cropped_image = image.getbbox()
         cropped_image = image.crop(cropped_image)
         self.width, self.height = cropped_image.size

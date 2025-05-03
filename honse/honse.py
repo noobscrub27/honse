@@ -1,4 +1,5 @@
 from collections import defaultdict
+import queue
 import pygame
 
 pygame.init()
@@ -18,6 +19,10 @@ from io import BytesIO
 import cProfile
 import functools
 import imageio
+
+import subprocess
+import numpy as np
+
 
 class HonseGame:
     # [pygame font, PIL font, height of font in pixels]
@@ -84,51 +89,89 @@ class HonseGame:
         self.current_frame_image = None
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
+        self.draw_every_nth_frame = 2
         self.load_map()
+
+    def save_into_ffmpeg(self, frame):
+        # frame.show()
+        # exit()
+        frame_data = frame.tobytes()
+        try:
+            self.video_writer.stdin.write(frame_data)
+        except BrokenPipeError:
+            print("Broken pipe error: FFmpeg process may have terminated.")
+        except Exception as e:
+            print(f"Error writing to FFmpeg stdin: {e}")
 
     def first_draw(self):
         if self.video_mode:
             image = Image.new(
-                mode="RGB",
+                mode="RGBA",
                 size=(self.SCREEN_WIDTH, self.SCREEN_HEIGHT),
-                color=(255, 255, 255),
+                color=(255, 255, 255, 255),
             )
-            Image.Image.paste(image, self.background_image, (0, 0))
+            image.paste(self.background_image, (0, 0))
             draw = ImageDraw.Draw(image, "RGBA")
             for character in self.characters:
                 character.ui_element.first_draw(draw)
             self.background_image = image
-            self.video_writer = imageio.get_writer(
-                self.video_out_path,
-                format="ffmpeg",
-                fps=60,
-                codec="libx264"
+            self.video_writer = subprocess.Popen(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-f",
+                    "rawvideo",
+                    "-vcodec",
+                    "rawvideo",
+                    "-pix_fmt",
+                    "rgba",
+                    "-s",
+                    f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
+                    "-r",
+                    str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame),
+                    "-i",
+                    "-",
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "ultrafast",
+                    "-crf",
+                    "30",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-loglevel",
+                    "warning",
+                    "-tune",
+                    "zerolatency",
+                    "-threads",
+                    "2",
+                    self.video_out_path,
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                creationflags=subprocess.CREATE_NO_WINDOW, 
             )
 
+            self.current_frame_image = Image.new(
+                "RGBA", (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
+            )
+            self.current_frame_draw = ImageDraw.Draw(self.current_frame_image)
 
     def show_display(self):
         if self.pygame_mode:
             pygame.display.flip()
-        if self.video_mode:
-            #TODO: Remove it into a separate thread?
-            if self.current_frame_image is not None:
-                self.video_writer.append_data(
-                    np.array(self.current_frame_image.convert("RGB"))
-                )
-            else:
-                self.video_writer.append_data(
-                    np.array(self.background_image.convert("RGB"))
-                )
-            self.current_frame_image = None
-            self.current_frame_draw = None
+        if self.video_mode and self.current_frame_image is not None:
+            self.save_into_ffmpeg(self.current_frame_image)
 
     def draw_background(self):
         if self.pygame_mode:
             self.screen.fill("white")
             self.screen.blit(self.background_surface, (0, 0))
         if self.video_mode:
-            self.current_frame_image = self.background_image.copy()
-            self.current_frame_draw = ImageDraw.Draw(self.current_frame_image, "RGBA")
+            self.current_frame_image.paste(self.background_image)
 
     def draw_circle(self, x, y, radius, rgba):
         if self.pygame_mode:
@@ -188,8 +231,7 @@ class HonseGame:
         if self.pygame_mode:
             self.screen.blit(pygame_surface, (x, y))
         if self.video_mode:
-            Image.Image.paste(self.current_frame_image, pil_image, (int(x), int(y)))
-            self.current_frame_draw = ImageDraw.Draw(self.current_frame_image, "RGBA")
+            self.current_frame_image.paste(pil_image, (int(x), int(y)), pil_image)
 
     @functools.lru_cache(maxsize=512)
     def get_text_image(self, text, font_key, r, g, b, a):
@@ -245,8 +287,8 @@ class HonseGame:
         )
         self.characters.append(character)
 
-    def display_message(self, text, font_index, rgb):
-        self.current_frame_messages.append([text, font_index, rgb])
+    def display_message(self, text, font_index, RGBA):
+        self.current_frame_messages.append([text, font_index, RGBA])
 
     def render_all_messages(self):
         # this is where the next text box should be drawn
@@ -343,6 +385,7 @@ class HonseGame:
 
     def main_loop(self):
         self.first_draw()
+        average_fps = 0
         try:
             while self.running:
                 self.frame_count += 1
@@ -398,10 +441,11 @@ class HonseGame:
                     self.check_game_end()
 
                 self.render_all_messages()
+                if self.running and self.frame_count % self.draw_every_nth_frame == 0:
+                    self.show_display()
 
-                self.show_display()
-
-                self.clock.tick(self.FRAMES_PER_SECOND)
+                self.clock.tick(0)
+                average_fps.append(self.clock.get_fps())
                 if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
                     print(self.clock.get_fps())
 
@@ -413,9 +457,24 @@ class HonseGame:
             self.running = False
         finally:
             if self.video_mode:
-                self.video_writer.close()
-            if self.pygame_mode:
-                pygame.quit()
+                try:
+                    self.video_writer.stdin.close()  # signal EOF to FFmpeg
+                except Exception as e:
+                    print(f"Failed to close FFmpeg stdin: {e}")
+
+                try:
+                    self.video_writer.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    print("FFmpeg did not terminate in time, killing it.")
+                    self.video_writer.kill()
+
+                if self.video_writer.returncode != 0:
+                    print(
+                        "FFmpeg returned non-zero exit status:",
+                        self.video_writer.returncode,
+                    )
+                else:
+                    print("FFmpeg finished successfully.")
 
 
 """
@@ -452,7 +511,7 @@ basic_moveset = [
     honse_pokemon.moves["Water Gun"],
     honse_pokemon.moves["Giga Impact"],
 ]
-game = HonseGame("map02.json", "map02.png", False, True, 1920, 1080, 0)
+game = HonseGame("map02.json", "map02.png", False, True, 1920, 1080, 60)
 game.add_character(
     "Saurbot",
     0,
@@ -489,7 +548,7 @@ game.add_character(
     [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
     "dragonite.png",
 )
-'''
+"""
 game.add_character(
     "Alakazam",
     1,
@@ -516,7 +575,7 @@ game.add_character(
     basic_moveset,
     [honse_pokemon.pokemon_types["Rock"]],
     "sudowoodo.png",
-)'''
+)"""
 game.add_character(
     "Croconaw",
     1,
@@ -526,5 +585,10 @@ game.add_character(
     [honse_pokemon.pokemon_types["Water"]],
     "croconaw.png",
 )
-cProfile.run("game.main_loop()", sort="cumtime")
+cProfile.run("game.main_loop()", sort="cumtime", filename="res")
+import pstats
+
+p = pstats.Stats("res")
+p.strip_dirs()
+p.sort_stats("cumulative").print_stats(40)
 pygame.quit()
