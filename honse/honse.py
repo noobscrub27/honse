@@ -89,7 +89,7 @@ class HonseGame:
         self.current_frame_image = None
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
-        self.draw_every_nth_frame = 2
+        self.draw_every_nth_frame = 4
         self.load_map()
 
     def save_into_ffmpeg(self, frame):
@@ -128,7 +128,7 @@ class HonseGame:
                     "-s",
                     f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
                     "-r",
-                    str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame),
+                    str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame * 2), #TODO: render at double speed, may want to change later
                     "-i",
                     "-",
                     "-c:v",

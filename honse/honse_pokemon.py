@@ -153,11 +153,11 @@ class Character:
         self.moves = moves
         self.cooldowns = [0, 0, 0, 0]
         # moves start on partial cooldown, but not less than 3 seconds
-        for i in range(len(self.moves)):
-            self.on_cooldown(i)
-            self.cooldowns[i] /= 2
-            if self.cooldowns[i] > 0 and self.cooldowns[i] < 180:
-                self.cooldowns[i] = 180
+        # for i in range(len(self.moves)):
+        #     self.on_cooldown(i)
+        #     self.cooldowns[i] /= 2
+        #     if self.cooldowns[i] > 0 and self.cooldowns[i] < 180:
+        #         self.cooldowns[i] = 180
         self.types = types
         # speed is pixels/frame
         self.current_speed = 0
