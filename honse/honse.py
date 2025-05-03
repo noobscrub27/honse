@@ -83,7 +83,7 @@ class HonseGame:
         self.background = background
         self.current_frame_image = None
         self.current_frame_draw = None
-        self.frame_images = []
+        self.video_out_path = "output.mp4"
         self.load_map()
 
     def first_draw(self):
@@ -98,14 +98,27 @@ class HonseGame:
             for character in self.characters:
                 character.ui_element.first_draw(draw)
             self.background_image = image
-            
+            self.video_writer = imageio.get_writer(
+                self.video_out_path,
+                format="ffmpeg",
+                fps=60,
+                codec="libx264"
+            )
+
 
     def show_display(self):
         if self.pygame_mode:
             pygame.display.flip()
         if self.video_mode:
+            #TODO: Remove it into a separate thread?
             if self.current_frame_image is not None:
-                self.frame_images.append(self.current_frame_image)
+                self.video_writer.append_data(
+                    np.array(self.current_frame_image.convert("RGB"))
+                )
+            else:
+                self.video_writer.append_data(
+                    np.array(self.background_image.convert("RGB"))
+                )
             self.current_frame_image = None
             self.current_frame_draw = None
 
@@ -114,7 +127,7 @@ class HonseGame:
             self.screen.fill("white")
             self.screen.blit(self.background_surface, (0, 0))
         if self.video_mode:
-            self.current_frame_image = self.background_image
+            self.current_frame_image = self.background_image.copy()
             self.current_frame_draw = ImageDraw.Draw(self.current_frame_image, "RGBA")
 
     def draw_circle(self, x, y, radius, rgba):
@@ -187,7 +200,7 @@ class HonseGame:
         width, height = size[2] - size[0], size[3] - size[1]
         img = Image.new("RGBA", (width, height))
         draw = ImageDraw.Draw(img)
-        draw.text((0, 0), text, (r, g, b, a), font=font)
+        draw.text((-size[0], -size[1]), text, (r, g, b, a), font=font)
         return img
 
     def draw_text(self, x, y, text, font_key, r, g, b, a):
@@ -330,78 +343,80 @@ class HonseGame:
 
     def main_loop(self):
         self.first_draw()
-        while self.running:
-            self.frame_count += 1
-            # poll for events
-            # pygame.QUIT event means the user clicked X to close your window
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                    sys.exit()
+        try:
+            while self.running:
+                self.frame_count += 1
+                # poll for events
+                # pygame.QUIT event means the user clicked X to close your window
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.running = False
+                        sys.exit()
 
-            # fill the screen with a color to wipe away anything from last frame
-            self.draw_background()
+                # fill the screen with a color to wipe away anything from last frame
+                self.draw_background()
 
-            self.particle_spawner.emit()
-            for spawner in self.temporary_particle_spawners:
-                spawner.emit()
+                self.particle_spawner.emit()
+                for spawner in self.temporary_particle_spawners:
+                    spawner.emit()
 
-            # update ui
-            for character in self.characters:
-                character.ui_element.display()
+                # update ui
+                for character in self.characters:
+                    character.ui_element.display()
 
-            # sort by speed
-            tangible_characters = filter(
-                lambda c: not c.is_intangible(), self.characters
-            )
-            tangible_characters = sorted(
-                tangible_characters, key=lambda x: x.get_speed(), reverse=True
-            )
-            for character in tangible_characters:
-                for other_character in tangible_characters:
-                    if other_character is character:
-                        continue
-                    if character.is_colliding(other_character):
-                        character.use_move(other_character)
-                        character.resolve_collision(other_character)
+                # sort by speed
+                tangible_characters = filter(
+                    lambda c: not c.is_intangible(), self.characters
+                )
+                tangible_characters = sorted(
+                    tangible_characters, key=lambda x: x.get_speed(), reverse=True
+                )
+                for character in tangible_characters:
+                    for other_character in tangible_characters:
+                        if other_character is character:
+                            continue
+                        if character.is_colliding(other_character):
+                            character.use_move(other_character)
+                            character.resolve_collision(other_character)
 
-            # update loop
-            for character in self.characters:
-                character.update()
+                # update loop
+                for character in self.characters:
+                    character.update()
 
-            # move loop
-            for character in self.characters:
-                character.move()
+                # move loop
+                for character in self.characters:
+                    character.move()
 
-            # draw loop
-            # fainted characters should appear below other characters. Draw them first
-            for character in sorted(
-                self.characters, key=lambda x: 0 if x.is_fainted() else 1
-            ):
-                character.draw()
+                # draw loop
+                # fainted characters should appear below other characters. Draw them first
+                for character in sorted(
+                    self.characters, key=lambda x: 0 if x.is_fainted() else 1
+                ):
+                    character.draw()
 
-            if not self.game_end:
-                self.check_game_end()
+                if not self.game_end:
+                    self.check_game_end()
 
-            self.render_all_messages()
+                self.render_all_messages()
 
-            self.show_display()
+                self.show_display()
 
-            self.clock.tick(self.FRAMES_PER_SECOND)
-            if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
-                print(self.clock.get_fps())
+                self.clock.tick(self.FRAMES_PER_SECOND)
+                if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
+                    print(self.clock.get_fps())
 
-            if self.game_end:
-                self.game_end_timer -= 1
-                if self.game_end_timer < 0:
-                    self.running = False
-        if self.video_mode:
-            with imageio.get_writer("output.mp4", mode="I", fps=60) as writer:
-                for frame in self.frame_images:
-                    with BytesIO() as image:
-                        frame.save(image, "PNG")
-                        image.seek(0)
-                        writer.append_data(imageio.imread(image))
+                if self.game_end:
+                    self.game_end_timer -= 1
+                    if self.game_end_timer < 0:
+                        self.running = False
+        except KeyboardInterrupt:
+            self.running = False
+        finally:
+            if self.video_mode:
+                self.video_writer.close()
+            if self.pygame_mode:
+                pygame.quit()
+
 
 """
 characters = [
