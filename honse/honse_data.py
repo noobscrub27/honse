@@ -63,13 +63,13 @@ class UIElement:
             colors = [color for color in TEAM_COLORS[self.character.team]]
             colors.append(255)
             colors = tuple(colors)
-            draw.polygon([self.x, self.y, self.width, self.height], fill=colors)
-            draw.polygon(
+            draw.rectangle([self.x, self.y, self.x + self.width, self.y + self.height], fill=colors)
+            draw.rectangle(
                 [
                     self.x + self.border_width,
                     self.y + self.border_width,
-                    self.y + self.border_width,
-                    self.height - (2 * self.border_width),
+                    self.x + self.width - self.border_width,
+                    self.y + self.height - self.border_width,
                 ],
                 fill=(255, 255, 255, 255),
             )
@@ -80,7 +80,7 @@ class UIElement:
         inner_rect = pygame.Rect(
             self.x + self.border_width,
             self.y + self.border_width,
-            self.y + self.border_width,
+            self.width - (2 * self.border_width),
             self.height - (2 * self.border_width),
         )
         if self.character.game.pygame_mode:

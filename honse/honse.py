@@ -150,9 +150,9 @@ class HonseGame:
                     self.video_out_path,
                 ],
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, 
-                creationflags=subprocess.CREATE_NO_WINDOW, 
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
 
             self.current_frame_image = Image.new(
@@ -211,7 +211,12 @@ class HonseGame:
                     pygame.draw.rect(self.screen, color, rect)
         if self.video_mode:
             if rotation % 360 == 0:
-                verticies = [x_pos, y_pos, x_pos + width, y_pos + height]
+                verticies = [
+                    (x_pos, y_pos),
+                    (x_pos + width, y_pos),
+                    (x_pos + width, y_pos + height),
+                    (x_pos, y_pos + height),
+                ]
             else:
                 rotation_radians = np.radians(rotation)
                 c, s = math.cos(rotation_radians), math.sin(rotation_radians)
@@ -347,7 +352,7 @@ class HonseGame:
             self.background_image = Image.open(BytesIO(image.tobytes()))
         else:
             self.background_surface = pygame.image.load(self.background)
-            self.background_image = Image.open(self.background)
+            self.background_image = Image.open(self.background).convert("RGBA")
 
         self.walls = [
             {
@@ -385,7 +390,7 @@ class HonseGame:
 
     def main_loop(self):
         self.first_draw()
-        average_fps = 0
+        average_fps = []
         try:
             while self.running:
                 self.frame_count += 1
@@ -447,7 +452,8 @@ class HonseGame:
                 self.clock.tick(0)
                 average_fps.append(self.clock.get_fps())
                 if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
-                    print(self.clock.get_fps())
+                    print(f"FPS: {np.mean(average_fps)}")
+                    average_fps = []
 
                 if self.game_end:
                     self.game_end_timer -= 1
@@ -548,7 +554,7 @@ game.add_character(
     [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
     "dragonite.png",
 )
-"""
+
 game.add_character(
     "Alakazam",
     1,
@@ -575,7 +581,7 @@ game.add_character(
     basic_moveset,
     [honse_pokemon.pokemon_types["Rock"]],
     "sudowoodo.png",
-)"""
+)
 game.add_character(
     "Croconaw",
     1,
@@ -586,6 +592,8 @@ game.add_character(
     "croconaw.png",
 )
 cProfile.run("game.main_loop()", sort="cumtime", filename="res")
+
+
 import pstats
 
 p = pstats.Stats("res")
