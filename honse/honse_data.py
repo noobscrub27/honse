@@ -63,7 +63,6 @@ class UIElement:
             colors = [color for color in TEAM_COLORS[self.character.team]]
             colors.append(255)
             colors = tuple(colors)
-            print(colors)
             draw.polygon([self.x, self.y, self.width, self.height], fill=colors)
             draw.polygon(
                 [

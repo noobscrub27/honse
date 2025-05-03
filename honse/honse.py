@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import cProfile
 import functools
-
+import imageio
 
 class HonseGame:
     # [pygame font, PIL font, height of font in pixels]
@@ -83,6 +83,7 @@ class HonseGame:
         self.background = background
         self.current_frame_image = None
         self.current_frame_draw = None
+        self.frame_images = []
         self.load_map()
 
     def first_draw(self):
@@ -97,11 +98,14 @@ class HonseGame:
             for character in self.characters:
                 character.ui_element.first_draw(draw)
             self.background_image = image
+            
 
     def show_display(self):
         if self.pygame_mode:
             pygame.display.flip()
         if self.video_mode:
+            if self.current_frame_image is not None:
+                self.frame_images.append(self.current_frame_image)
             self.current_frame_image = None
             self.current_frame_draw = None
 
@@ -391,7 +395,13 @@ class HonseGame:
                 self.game_end_timer -= 1
                 if self.game_end_timer < 0:
                     self.running = False
-
+        if self.video_mode:
+            with imageio.get_writer("output.mp4", mode="I", fps=60) as writer:
+                for frame in self.frame_images:
+                    with BytesIO() as image:
+                        frame.save(image, "PNG")
+                        image.seek(0)
+                        writer.append_data(imageio.imread(image))
 
 """
 characters = [
@@ -464,6 +474,7 @@ game.add_character(
     [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
     "dragonite.png",
 )
+'''
 game.add_character(
     "Alakazam",
     1,
@@ -490,7 +501,7 @@ game.add_character(
     basic_moveset,
     [honse_pokemon.pokemon_types["Rock"]],
     "sudowoodo.png",
-)
+)'''
 game.add_character(
     "Croconaw",
     1,
