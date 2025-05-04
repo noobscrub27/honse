@@ -526,7 +526,7 @@ game.add_character(
     0,
     100,
     {"HP": 77, "ATK": 5, "DEF": 107, "SPA": 5, "SPD": 104, "SPE": 20},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]],
     "bob.png",
 )
@@ -535,7 +535,7 @@ game.add_character(
     0,
     100,
     {"HP": 114, "ATK": 44, "DEF": 104, "SPA": 95, "SPD": 138, "SPE": 55},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Poison"]],
     "saur.png",
 )
@@ -544,7 +544,7 @@ game.add_character(
     0,
     100,
     {"HP": 88, "ATK": 119, "DEF": 103, "SPA": 117, "SPD": 101, "SPE": 94},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Ghost"]],
     "apollo.png",
 )
@@ -553,7 +553,7 @@ game.add_character(
     0,
     100,
     {"HP": 91, "ATK": 134, "DEF": 95, "SPA": 100, "SPD": 100, "SPE": 80},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
     "dragonite.png",
 )
@@ -563,7 +563,7 @@ game.add_character(
     1,
     100,
     {"HP": 55, "ATK": 50, "DEF": 45, "SPA": 135, "SPD": 95, "SPE": 120},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Psychic"]],
     "alakazam.png",
 )
@@ -572,7 +572,7 @@ game.add_character(
     1,
     100,
     {"HP": 106, "ATK": 116, "DEF": 69, "SPA": 46, "SPD": 87, "SPE": 96},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Ice"], honse_pokemon.pokemon_types["Dark"]],
     "warwolf.png",
 )
@@ -581,7 +581,7 @@ game.add_character(
     1,
     100,
     {"HP": 80, "ATK": 115, "DEF": 125, "SPA": 30, "SPD": 65, "SPE": 55},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Rock"]],
     "sudowoodo.png",
 )
@@ -590,7 +590,7 @@ game.add_character(
     1,
     100,
     {"HP": 75, "ATK": 90, "DEF": 85, "SPA": 59, "SPD": 68, "SPE": 68},
-    basic_moveset,
+    random.sample(list(honse_pokemon.moves.values()), 4),
     [honse_pokemon.pokemon_types["Water"]],
     "croconaw.png",
 )

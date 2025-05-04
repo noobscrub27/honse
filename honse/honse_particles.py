@@ -1,7 +1,7 @@
 import pygame
 import random
 import math
-
+import numpy as np
 import honse_data
 
 
@@ -26,6 +26,7 @@ class CircleParticle:
         alpha,
         lifetime=None,
         death_function=None,
+        leave_trail_every_nth_frame=-1 # leaves a trail every nth frame. -1 for no trail
     ):
         self.game = game
         self.x = x
@@ -44,6 +45,8 @@ class CircleParticle:
         self.lived_lifetime = 0
         self.color = (255, 255, 255, 255)
         self.death_function = death_function
+        self.leave_trail_every_nth_frame = leave_trail_every_nth_frame
+
 
     def turn_into_function(self, x):
         if type(x) in [int, float]:
@@ -68,7 +71,7 @@ class CircleParticle:
     def check_alive(self):
         if self.radius <= 0:
             return False
-        elif self.max_lifetime is None:
+        elif self.max_lifetime is not None:
             return self.remaining_lifetime > 0
         return True
 
@@ -76,6 +79,37 @@ class CircleParticle:
         if self.death_function is not None:
             self.death_function(self.game, self.x, self.y)
         del self
+
+    def spawn_trail_particle(self):
+        if self.leave_trail_every_nth_frame != -1 and self.lived_lifetime % self.leave_trail_every_nth_frame == 0:
+            if type(self) == CircleParticle:
+                particle = CircleParticle(
+                    self.game,
+                    self.x,self.y,
+                    0,0,
+                    self.radius,
+                    self.growth,
+                    self.red,
+                    self.green,
+                    self.blue,
+                    self.alpha,
+                    self.max_lifetime)
+            elif type(self) == RectParticle:
+                particle = RectParticle(
+                    self.game,
+                    self.x,self.y,
+                    0,0,
+                    self.width,self.height,
+                    self.x_growth,self.y_growth,
+                    self.rotation_degrees,
+                    self.red,
+                    self.green,
+                    self.blue,
+                    self.alpha,
+                    self.max_lifetime)
+            particle.lived_lifetime = self.lived_lifetime
+            particle.remaining_lifetime = self.remaining_lifetime
+            self.game.particle_spawner.add_particles(particle)
 
     def update(self):
         lifetime_remaining = self.get_lifetime_remaining()
@@ -88,6 +122,7 @@ class CircleParticle:
             self.blue(self.lived_lifetime, lifetime_remaining),
             self.alpha(self.lived_lifetime, lifetime_remaining),
         )
+        self.spawn_trail_particle()
 
     def draw(self):
         if self.radius >= 1:
@@ -113,6 +148,7 @@ class RectParticle(CircleParticle):
         alpha,
         lifetime=None,
         death_function=None,
+        leave_trail_every_nth_frame=-1
     ):
         self.width = width
         self.height = height
@@ -133,6 +169,7 @@ class RectParticle(CircleParticle):
             alpha,
             lifetime,
             death_function,
+            leave_trail_every_nth_frame
         )
 
     def update_size(self, lifetime_remaining):
@@ -142,7 +179,7 @@ class RectParticle(CircleParticle):
     def check_alive(self):
         if self.height <= 0 or self.width <= 0:
             return False
-        elif self.max_lifetime is None:
+        elif self.max_lifetime is not None:
             return self.remaining_lifetime > 0
         return True
 
@@ -319,21 +356,134 @@ def splash_animation(game, x, y):
 
 
 def flame_animation(game, x, y):
+    # smoke
     for i in range(random.randint(8, 12)):
-        size = random.randint(8, 12)
-        x_speed = random.randint(4, 8) * random.choice([-1, 1])
-        y_speed = lambda a, b: random.randint(20, 30) * (0.5 - b)
+        size = random.randint(18, 24)
+        x_speed = random.randint(-2, 2)
+        y_speed = -random.randint(3, 6)
         particle = CircleParticle(
+            game,
             x,
             y,
             x_speed,
             y_speed,
             size,
             -0.2,
-            50,
-            random.randint(70, 170),
-            230,
-            255,
+            0,
+            0,
+            0,
+            64,
+            random.randint(24, 36)
+    )
+        game.particle_spawner.add_particles(particle)
+    # flames
+    for i in range(random.randint(16, 24)):
+        size = random.randint(12, 18)
+        x_speed = random.randint(-2, 2)
+        y_speed = -random.randint(4, 8)
+        particle = CircleParticle(
+            game,
+            x + random.randint(-size, size),
+            y + random.randint(-size, size),
+            x_speed,
+            y_speed,
+            size,
+            -0.8,
+            245,
+            lambda a, b: int(random.randint(33, 99) + (b*120)),
+            34,
+            180,
             random.randint(24, 36),
+            spark_animation
         )
+        game.particle_spawner.add_particles(particle)
+
+
+def psychic_animation(game, x, y):
+    x_size = 12
+    y_size = 4
+    x_speed = 5
+    y_speed = lambda a, b: np.cos(np.radians(360*b)) * 2
+    lifetime = 12
+    particle_count = 10
+    for i in range(particle_count):
+       
+        particle = RectParticle(
+            game,
+            x-(x_speed*lifetime/2),
+            y + (2*y_size*(i-(particle_count/2))),
+            x_speed,
+            y_speed,
+            x_size, y_size,
+            0, 0,
+            0,
+            200,
+            66,
+            245,
+            255,
+            lifetime,
+            None,
+            2
+        )
+        game.particle_spawner.add_particles(particle)
+    impact_particle_spawner = CircleParticle(
+        game,
+        x, y,
+        0, 0,
+        1, 0,
+        0, 0, 0, 0,
+        lifetime,
+        spark_animation)
+
+
+def ice_shatter_animation(game, x, y):
+    for i in range(random.randint(3, 6)):
+        size = random.randint(8, 12)
+        x_speed = random.randint(4, 8) * random.choice([-1, 1])
+        y_speed = random.randint(4, 8) * random.choice([-1, 1])
+        particle = RectParticle(
+            game,
+            x,
+            y,
+            x_speed,
+            y_speed,
+            size,
+            size,
+            -0.4,
+            -0.4,
+            random.randint(0,45),
+            60,
+            random.randint(185, 250),
+            random.randint(215, 250),
+            155,
+            10
+    )
+        game.particle_spawner.add_particles(particle)
+
+
+def ice_animation(game, x, y):
+    size = 25
+    growth = 2
+    angle = 0
+    for i in range(8, 12):
+        size = random.randint(8, 12)
+        particle = RectParticle(
+            game,
+            x - size/2 + random.randint(-25,25),
+            y - size/2 + random.randint(-25,25),
+            -growth/2,
+            -growth/2,
+            size,
+            size,
+            growth,
+            growth,
+            angle,
+            60,
+            random.randint(185, 250),
+            random.randint(215, 250),
+            100,
+            30,
+            ice_shatter_animation
+        )
+        angle += 45
         game.particle_spawner.add_particles(particle)
