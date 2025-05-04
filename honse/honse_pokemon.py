@@ -6,7 +6,7 @@ import honse_data
 import honse_particles
 import enum
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 
 class MoveCategories(enum.Enum):
@@ -198,15 +198,34 @@ class Character:
         cropped_image = image.getbbox()
         cropped_image = image.crop(cropped_image)
         self.width, self.height = cropped_image.size
-        self.visual_circle_radius = max(
-            25, (math.ceil(max(self.width, self.height) / 2) + 3)
+        self.team_circle_radius = math.ceil(max(self.width, self.height) / 2) + 3
+        # the background is the team colored circle
+        background_size = 2*self.team_circle_radius
+        background_image = image = Image.new(
+            mode="RGBA",
+            size=(background_size, background_size),
+            color=(0, 0, 0, 0),
         )
-        self.radius = self.visual_circle_radius
+        color = (
+                honse_data.TEAM_COLORS[self.team][0],
+                honse_data.TEAM_COLORS[self.team][1],
+                honse_data.TEAM_COLORS[self.team][2],
+                85,
+            )
+        background_draw = ImageDraw.Draw(background_image, "RGBA")
+        party_sprite_coords = (
+            (background_size - self.width) // 2,
+            (background_size - self.height) // 2
+            )
+        background_draw.ellipse((0, 0, background_size, background_size), fill=color)
         r, g, b, a = cropped_image.split()
-        self.image = cropped_image
-        self.intangible_image = Image.merge(
+        self.image = background_image.copy()
+        self.image.paste(cropped_image, party_sprite_coords, cropped_image)
+        intangible_image = Image.merge(
             "RGBA", (r, g, b, a.point(lambda x: int(x * 2 / 3)))
         )
+        self.intangible_image = background_image.copy()
+        self.intangible_image.paste(intangible_image, party_sprite_coords, intangible_image)
         self.fainted_image = Image.merge(
             "RGBA",
             (
@@ -446,6 +465,7 @@ class Character:
             surface = self.surface
             image = self.image
         if not self.is_fainted():
+            '''
             color = (
                 honse_data.TEAM_COLORS[self.team][0],
                 honse_data.TEAM_COLORS[self.team][1],
@@ -455,6 +475,8 @@ class Character:
             self.game.draw_circle(
                 self.position[0], self.position[1], self.visual_circle_radius, color
             )
+            '''
+            pass
         self.game.draw_image(
             self.position[0] - (self.width // 2),
             self.position[1] - (self.height // 2),
@@ -560,7 +582,7 @@ moves = {
         MoveCategories.PHYSICAL,
         3600,
         150,
-        20,
+        5,
         0,
         16,
         2,

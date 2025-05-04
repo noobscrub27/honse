@@ -18,7 +18,6 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import cProfile
 import functools
-import imageio
 
 import subprocess
 import numpy as np
@@ -89,7 +88,7 @@ class HonseGame:
         self.current_frame_image = None
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
-        self.draw_every_nth_frame = 4
+        self.draw_every_nth_frame = 2
         self.load_map()
 
     def save_into_ffmpeg(self, frame):
@@ -128,7 +127,7 @@ class HonseGame:
                     "-s",
                     f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
                     "-r",
-                    str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame * 2), #TODO: render at double speed, may want to change later
+                    str(self.FRAMES_PER_SECOND / 2 * self.draw_every_nth_frame), #TODO: render at double speed, may want to change later
                     "-i",
                     "-",
                     "-c:v",
@@ -419,13 +418,17 @@ class HonseGame:
                 tangible_characters = sorted(
                     tangible_characters, key=lambda x: x.get_speed(), reverse=True
                 )
+                collisions = []
                 for character in tangible_characters:
                     for other_character in tangible_characters:
                         if other_character is character:
                             continue
                         if character.is_colliding(other_character):
                             character.use_move(other_character)
-                            character.resolve_collision(other_character)
+                            collisions.append([character, other_character])
+
+                for collision in collisions:
+                    collision[0].resolve_collision(collision[1])
 
                 # update loop
                 for character in self.characters:
@@ -517,7 +520,7 @@ basic_moveset = [
     honse_pokemon.moves["Water Gun"],
     honse_pokemon.moves["Giga Impact"],
 ]
-game = HonseGame("map02.json", "map02.png", False, True, 1920, 1080, 60)
+game = HonseGame("map02.json", "map02.png", True, True, 1920, 1080, 60)
 game.add_character(
     "Saurbot",
     0,

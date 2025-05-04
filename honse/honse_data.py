@@ -74,6 +74,7 @@ class UIElement:
                 fill=(255, 255, 255, 255),
             )
 
+
     def display(self):
         screen = self.character.game.screen
         border_rect = pygame.Rect(self.x, self.y, self.width, self.height)
@@ -162,9 +163,4 @@ class UIElement:
         adjusted_length = math.floor(value_decimal * width)
         if value > 0 and adjusted_length == 0:
             adjusted_length = 1
-        if self.character.game.pygame_mode:
-            color = pygame.Color(color[0], color[1], color[2], color[3])
-            bar = pygame.Rect(x, y, adjusted_length, height)
-            pygame.draw.rect(screen, color, bar)
-        if self.character.game.video_mode:
-            self.character.game.draw_rectangle(x, y, adjusted_length, height, 0, color)
+        self.character.game.draw_rectangle(x, y, adjusted_length, height, 0, color)
