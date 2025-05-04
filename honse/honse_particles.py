@@ -256,9 +256,13 @@ class SlashParticleSpawner(ParticleSpawner):
             del self
 
 """
+def randomize_if_tuple(value):
+    if type(value) is tuple:
+        return random.randint(value[0], value[1])
+    else:
+        return value
 
-
-def impact_animation(game, x, y):
+def impact_animation(game, x, y, lifetime=10):
     for i in range(random.randint(8, 12)):
         size = random.randint(8, 12)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -278,12 +282,12 @@ def impact_animation(game, x, y):
             random.randint(100, 200),
             52,
             255,
-            10,
+            randomize_if_tuple(lifetime),
         )
         game.particle_spawner.add_particles(particle)
 
 
-def large_impact_animation(game, x, y):
+def large_impact_animation(game, x, y, lifetime=10):
     for i in range(random.randint(20, 30)):
         size = random.randint(12, 16)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -303,12 +307,12 @@ def large_impact_animation(game, x, y):
             random.randint(100, 200),
             52,
             255,
-            10,
+            randomize_if_tuple(lifetime),
         )
         game.particle_spawner.add_particles(particle)
 
 
-def spark_animation(game, x, y):
+def spark_animation(game, x, y, lifetime=10):
     for i in range(random.randint(3, 5)):
         size = random.randint(3, 4)
         x_speed = random.randint(2, 4) * random.choice([-1, 1])
@@ -328,12 +332,12 @@ def spark_animation(game, x, y):
             random.randint(185, 225),
             random.randint(20, 80),
             255,
-            10,
+            randomize_if_tuple(lifetime),
         )
         game.particle_spawner.add_particles(particle)
 
 
-def splash_animation(game, x, y):
+def splash_animation(game, x, y, lifetime=(24,36)):
     for i in range(random.randint(8, 12)):
         size = random.randint(8, 12)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -350,12 +354,12 @@ def splash_animation(game, x, y):
             random.randint(70, 170),
             230,
             255,
-            random.randint(24, 36),
+            randomize_if_tuple(lifetime),
         )
         game.particle_spawner.add_particles(particle)
 
 
-def flame_animation(game, x, y):
+def flame_animation(game, x, y, lifetime=(24,36)):
     # smoke
     for i in range(random.randint(8, 12)):
         size = random.randint(18, 24)
@@ -373,7 +377,7 @@ def flame_animation(game, x, y):
             0,
             0,
             64,
-            random.randint(24, 36)
+            randomize_if_tuple(lifetime)
     )
         game.particle_spawner.add_particles(particle)
     # flames
@@ -393,39 +397,56 @@ def flame_animation(game, x, y):
             lambda a, b: int(random.randint(33, 99) + (b*120)),
             34,
             180,
-            random.randint(24, 36),
+            randomize_if_tuple(lifetime),
             spark_animation
         )
         game.particle_spawner.add_particles(particle)
 
 
-def psychic_animation(game, x, y):
+def psychic_animation(game, x, y, lifetime = 12):
     x_size = 12
-    y_size = 4
+    y_size = 8
     x_speed = 5
-    y_speed = lambda a, b: np.cos(np.radians(360*b)) * 2
-    lifetime = 12
+    y_speed_left = lambda a, b: np.cos(np.radians(360*b)) * 2
+    y_speed_right = lambda a, b: np.sin(np.radians(360*b)) * -2
     particle_count = 10
     for i in range(particle_count):
-       
-        particle = RectParticle(
+        particle_left = RectParticle(
             game,
             x-(x_speed*lifetime/2),
-            y + (2*y_size*(i-(particle_count/2))),
+            y + (y_size*(i-(particle_count/2))),
             x_speed,
-            y_speed,
+            y_speed_left,
             x_size, y_size,
             0, 0,
             0,
             200,
             66,
             245,
-            255,
-            lifetime,
+            127,
+            randomize_if_tuple(lifetime),
             None,
             2
         )
-        game.particle_spawner.add_particles(particle)
+        particle_right = RectParticle(
+            game,
+            x+(x_speed*lifetime/2),
+            y - (y_size*(i-(particle_count/2))),
+            -x_speed,
+            y_speed_right,
+            x_size, y_size,
+            0, 0,
+            0,
+            166,
+            36,
+            36,
+            127,
+            lifetime[1] if type(lifetime) is tuple else lifetime,
+            None,
+            2
+        )
+        game.particle_spawner.add_particles(particle_left)
+        game.particle_spawner.add_particles(particle_right)
     impact_particle_spawner = CircleParticle(
         game,
         x, y,
@@ -434,9 +455,10 @@ def psychic_animation(game, x, y):
         0, 0, 0, 0,
         lifetime,
         spark_animation)
+    game.particle_spawner.add_particles(impact_particle_spawner)
 
 
-def ice_shatter_animation(game, x, y):
+def ice_shatter_animation(game, x, y, lifetime=10):
     for i in range(random.randint(3, 6)):
         size = random.randint(8, 12)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -456,15 +478,15 @@ def ice_shatter_animation(game, x, y):
             random.randint(185, 250),
             random.randint(215, 250),
             155,
-            10
+            randomize_if_tuple(lifetime)
     )
         game.particle_spawner.add_particles(particle)
 
 
-def ice_animation(game, x, y):
-    size = 25
+def ice_animation(game, x, y, lifetime=30):
+    size = 35
     growth = 2
-    angle = 0
+    angle = random.randint(35,55)
     for i in range(8, 12):
         size = random.randint(8, 12)
         particle = RectParticle(
@@ -482,7 +504,7 @@ def ice_animation(game, x, y):
             random.randint(185, 250),
             random.randint(215, 250),
             100,
-            30,
+            randomize_if_tuple(lifetime),
             ice_shatter_animation
         )
         angle += 45

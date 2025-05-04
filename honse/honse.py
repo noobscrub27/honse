@@ -4,7 +4,7 @@ import pygame
 
 pygame.init()
 pygame.font.init()
-
+pygame.mixer.init()
 import random
 import math
 import honse_data
@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import cProfile
 import functools
-
+import os
 import subprocess
 import numpy as np
 
@@ -53,6 +53,7 @@ class HonseGame:
         self,
         json_path,
         background,
+        music,
         pygame_mode,
         video_mode,
         width=1920,
@@ -89,7 +90,37 @@ class HonseGame:
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
         self.draw_every_nth_frame = 2
+        self.music = music
         self.load_map()
+        self.create_sounds()
+        self.play_music()
+
+    def play_music(self):
+        if self.pygame_mode:
+            pygame.mixer.music.load(os.path.join("music", self.music))
+            pygame.mixer.music.play(0)
+        if self.video_mode:
+            pass
+            # i'll get to you
+
+    def create_sounds(self):
+        files = os.listdir("sfx")
+        self.sounds = {}
+        for file in files:
+            if file.endswith(".mp3"):
+                no_file_extension = file.removesuffix(".mp3")
+                file_path = os.path.join("sfx", file)
+                self.sounds[no_file_extension] = [
+                    file_path,
+                    pygame.mixer.Sound(file_path)
+                    ]
+
+    def play_sound(self, sound, repeat=0):
+        if self.pygame_mode:
+            self.sounds[sound][1].play(repeat)
+        if self.video_mode:
+            pass
+            # i'll get to this later
 
     def save_into_ffmpeg(self, frame):
         # frame.show()
@@ -520,7 +551,7 @@ basic_moveset = [
     honse_pokemon.moves["Water Gun"],
     honse_pokemon.moves["Giga Impact"],
 ]
-game = HonseGame("map02.json", "map02.png", True, True, 1920, 1080, 60)
+game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, True, 1920, 1080, 60)
 game.add_character(
     "Saurbot",
     0,

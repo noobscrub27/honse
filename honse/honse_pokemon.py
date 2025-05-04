@@ -15,26 +15,16 @@ class MoveCategories(enum.Enum):
     STATUS = 2
 
 
-TYPE_EFFECTIVENESS = [0.25, 2 / 3, 1, 1.5]
-
-TYPE_EFFECTIVENESS_QUOTES = [
-    "It barely had any effect.",
-    "It's not very effective.",
-    "",
-    "It's super effective!",
-]
-
-
-def get_type_effectiveness_quote(move, target):
+def get_type_effectiveness_stuff(move, target):
     effectiveness = target.get_type_matchup(move.type)
     if effectiveness > 1:
-        return "It's super effective!"
+        return "It's super effective!", "Hit Super Effective"
     elif effectiveness == 0.25:
-        return "It barely had any effect."
+        return "It barely had any effect.", "Hit Alt Weak"
     elif effectiveness < 1:
-        return "It's not very effective."
+        return "It's not very effective.", "Hit Weak Not Very Effective"
     else:
-        return ""
+        return "", "Hit Normal Damage"
 
 
 def damage_formula(move, attacker, defender, spread=False):
@@ -114,12 +104,6 @@ def other_stat_formula(base, level, ivs=31, evs=0, nature=1):
     )
 
 
-def collision_check(terrain_map, rect):
-    try:
-        return terrain_map.get_at(rect.center) == pygame.Color(0, 0, 0, 255)
-    except IndexError:
-        return True
-
 
 class Effect:
     effect_types = []
@@ -178,6 +162,7 @@ class Character:
             (self.game.SCREEN_HEIGHT / 8) * (2 - self.team)
         )
         self.ui_element = honse_data.UIElement(ui_x, ui_y, self)
+        self.hit_sound_to_play = None
         self.spawn_in()
 
     def spawn_in(self):
@@ -290,17 +275,26 @@ class Character:
     def in_hitstop(self):
         return self.hitstop > 0
 
-    def tick_invulnerability(self, time=1):
+    def tick_invulnerability(self):
         if self.invulnerability > 0:
-            self.invulnerability -= time
+            self.invulnerability -= 1
         if self.invulnerability < 0:
             self.invulnerability = 0
 
-    def tick_intangibility(self, time=1):
+    def tick_intangibility(self):
         if self.intangibility > 0:
-            self.intangibility -= time
+            self.intangibility -= 1
         if self.intangibility < 0:
             self.intangibility = 0
+
+    def tick_hitstop(self):
+        if self.hitstop > 0:
+            self.hitstop -= 1
+            if self.hitstop == 0 and self.hit_sound_to_play is not None:
+                self.game.play_sound(self.hit_sound_to_play)
+        if self.hitstop < 0:
+            self.hitstop = 0
+        return self.hitstop > 0
 
     def get_max_hp(self):
         return hp_formula(self.base_stats["HP"], self.level)
@@ -396,9 +390,9 @@ class Character:
         dist = np.linalg.norm(self.position - closest)
         if dist < self.radius and np.dot(self.velocity, normal) < 0:
             self.velocity -= 2 * np.dot(self.velocity, normal) * normal
-
             overlap = self.radius - dist
             self.position += normal * overlap
+            self.game.play_sound("bounce")
 
     def resolve_collision(self, other):
         o1 = self.position
@@ -424,7 +418,7 @@ class Character:
 
     def update(self):
         if self.in_hitstop():
-            self.hitstop -= 1
+            self.tick_hitstop()
         else:
             self.tick_intangibility()
             self.tick_invulnerability()
@@ -486,14 +480,25 @@ class Character:
 
 
 class Move:
-    def __init__(self, name, pkmn_type, category, cooldown):
+    def __init__(self, name, pkmn_type, category, cooldown, animation, animation_length, sound):
         self.name = name
         self.type = pkmn_type
         self.category = category
         self.cooldown = cooldown
+        self.animation = animation
+        self.animation_length = animation_length
+        self.sound = sound
+
+    def play_effects(self, user, x, y):
+        user.game.display_message(f"{user.name} used {self.name}!", 24, [0, 0, 0])
+        user.game.play_sound(self.sound)
+        if self.animation_length != -1:
+            self.animation(user.game, x, y, self.animation_length)
+        else:
+            self.animation(user.game, x, y)
 
     def on_use(self, user, **kwargs):
-        self.send_message(f"{user.name} used {self.name}!")
+        self.play_effects(user, user.position[0], user.position[1])
 
     def send_message(self, text):
         print(text)
@@ -506,20 +511,21 @@ class BasicAttack(Move):
         pkmn_type,
         category,
         cooldown,
+        animation,
+        animation_length,
+        sound,
         power,
         hitstop,
         invulnerability,
         base_knockback,
         knockback_scaling,
-        animation,
     ):
-        super().__init__(name, pkmn_type, category, cooldown)
+        super().__init__(name, pkmn_type, category, cooldown, animation, animation_length, sound)
         self.power = power
         self.hitstop = hitstop
         self.invulnerability = invulnerability
         self.base_knockback = base_knockback
         self.knockback_scaling = knockback_scaling
-        self.animation = animation
 
     def knockback_modifier(self, current_hp, damage):
         # knockback is multiplied by knockback scaling
@@ -540,13 +546,15 @@ class BasicAttack(Move):
         target.hp -= damage
         target.hitstop = hitstop
         target.current_speed += knockback
-        user.game.display_message(f"{user.name} used {self.name}!", 24, [0, 0, 0])
-        effectiveness_quote = get_type_effectiveness_quote(self, target)
+        self.play_effects(user, user.position[0], user.position[1])
+        effectiveness_quote, effectiveness_sound = get_type_effectiveness_stuff(self, target)
         if effectiveness_quote:
             user.game.display_message(effectiveness_quote, 16, [0, 0, 0])
+        target.hit_sound_to_play = effectiveness_sound
         user.game.display_message(f"{target.name} took {damage} damage.", 16, [0, 0, 0])
         if target.hp <= 0:
             user.game.display_message(f"{target.name} fainted!", 24, [127, 0, 0])
+            target.hit_sound_to_play = "In-Battle Faint No Health"
         self.animation(user.game, target.position[0], target.position[1])
         return True
 
@@ -557,71 +565,83 @@ moves = {
         pokemon_types["Normal"],
         MoveCategories.PHYSICAL,
         900,
+        honse_particles.impact_animation,
+        -1,
+        "Tackle",
         45,
         4,
         0,
         6,
         1,
-        honse_particles.impact_animation,
     ),
     "Water Gun": BasicAttack(
         "Water Gun",
         pokemon_types["Water"],
         MoveCategories.SPECIAL,
         900,
+        honse_particles.splash_animation,
+        -1,
+        "Water Gun",
         40,
         3,
         0,
         4,
-        1.5,
-        honse_particles.splash_animation,
+        1.5
     ),
     "Giga Impact": BasicAttack(
         "Giga Impact",
         pokemon_types["Normal"],
         MoveCategories.PHYSICAL,
         3600,
+        honse_particles.large_impact_animation,
+        -1,
+        "Tackle",
         150,
         8,
         0,
-        12,
+        20,
         2,
-        honse_particles.large_impact_animation,
     ),
     "Ember": BasicAttack(
         "Ember",
         pokemon_types["Fire"],
         MoveCategories.SPECIAL,
         1200,
+        honse_particles.flame_animation,
+        -1,
+        "Ember",
         40,
         2,
         0,
         4,
         1,
-        honse_particles.flame_animation
     ),
     "Confusion": BasicAttack(
         "Confusion",
         pokemon_types["Psychic"],
         MoveCategories.SPECIAL,
         1350,
+        honse_particles.psychic_animation,
+        -1,
+        "Confusion",
         50,
         12,
         0,
         4,
         1,
-        honse_particles.psychic_animation
     ),
     "Ice Beam": BasicAttack(
         "Ice Beam",
         pokemon_types["Ice"],
         MoveCategories.SPECIAL,
         2800,
+        honse_particles.ice_animation,
+        -1,
+        "Ice Ball",
         90,
         30,
         0,
         4,
         0.5,
-        honse_particles.ice_animation
         )
 }
