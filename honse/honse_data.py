@@ -4,6 +4,10 @@ import math
 import numpy as np
 import os
 
+#may break things
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+
 COLLISION_INTANGIBILITY = 30
 FRAMES_PER_SECOND = 60
 FRAME_LENGTH_SECONDS = 1 / FRAMES_PER_SECOND

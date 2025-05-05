@@ -1,5 +1,5 @@
 from collections import defaultdict
-import queue
+import tempfile
 import pygame
 
 pygame.init()
@@ -21,6 +21,10 @@ import functools
 import os
 import subprocess
 import numpy as np
+from pydub import AudioSegment
+
+#may break things
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 class HonseGame:
@@ -67,6 +71,7 @@ class HonseGame:
         self.draw_every_nth_frame = 1
         self.music = music
         self.width_ratio = self.SCREEN_WIDTH / 1920
+        self.sound_events = []
         self.load_map()
         self.create_sounds()
         self.play_music()
@@ -109,25 +114,28 @@ class HonseGame:
         if self.video_mode:
             pass
             # i'll get to you
+            #
+            # no need :3 - lina
 
     def create_sounds(self):
-        files = os.listdir("sfx")
+        DIR = "sfx_wave"
+        files = os.listdir(DIR)
         self.sounds = {}
         for file in files:
-            if file.endswith(".mp3"):
-                no_file_extension = file.removesuffix(".mp3")
-                file_path = os.path.join("sfx", file)
-                self.sounds[no_file_extension] = [
-                    file_path,
-                    pygame.mixer.Sound(file_path)
-                    ]
+            no_file_extension = file.removesuffix(".mp3").removesuffix(".wav")
+            file_path = os.path.join(DIR, file)
+            self.sounds[no_file_extension] = [
+                file_path,
+                pygame.mixer.Sound(file_path)
+                ]
 
     def play_sound(self, sound, repeat=0):
         if self.pygame_mode:
             self.sounds[sound][1].play(repeat)
-        if self.video_mode:
-            pass
-            # i'll get to this later
+        elif self.video_mode:
+            self.sound_events.append(
+                (self.frame_count, sound, repeat)
+            )
 
     def save_into_ffmpeg(self, frame):
         # frame.show()
@@ -140,6 +148,87 @@ class HonseGame:
         except Exception as e:
             print(f"Error writing to FFmpeg stdin: {e}")
 
+    
+    def render_audio(self) -> None:
+        # Abandon hope, all ye who enter here
+        # - Lina
+        SR          = 44_100             
+        FPS         = self.FRAMES_PER_SECOND
+        FRAME_SIZE  = SR // FPS             
+        HEADROOM_DB = -9               
+        LIMIT_PAD   = 0.97    
+        SFX_GAIN_DB = -3  
+        
+        def seg_to_float(seg: AudioSegment) -> np.ndarray:
+            seg = seg.fade_in(5).fade_out(5)  # small 5ms fades to reduce clicks
+            pcm = np.array(seg.get_array_of_samples(), dtype=np.float32)
+            pcm = pcm.reshape(-1, seg.channels) / 32_768.0
+            if seg.channels == 1:
+                pcm = np.repeat(pcm, 2, axis=1)
+            return pcm
+
+        def soft_limiter(x: np.ndarray, threshold=0.9):
+            return np.tanh(x / threshold) * threshold
+        total_frames   = self.frame_count + 1
+        total_samples  = total_frames * FRAME_SIZE
+        master         = np.zeros((total_samples, 2), dtype=np.float32)
+
+        
+        bg_seg = (AudioSegment
+                .from_file(os.path.join("music", self.music))
+                .set_frame_rate(SR)
+                .set_channels(2)
+                .apply_gain(HEADROOM_DB))
+
+        bg = seg_to_float(bg_seg)
+        loops_needed = math.ceil(total_samples / len(bg))
+        master += np.tile(bg, (loops_needed, 1))[:total_samples]
+
+        sfx_cache: dict[str, np.ndarray] = {}
+
+        def load_sfx(name: str) -> np.ndarray:
+            if name not in sfx_cache:
+                print("Loading sound effect:", name)
+                seg = (AudioSegment
+                    .from_file(self.sounds[name][0])
+                    .set_frame_rate(SR)
+                    .set_channels(2)
+                    .fade_in(10)
+                    .fade_out(10)
+                    .low_pass_filter(15000)
+                    .normalize(headroom=3.0)
+                    .apply_gain(HEADROOM_DB + SFX_GAIN_DB))
+                sfx_cache[name] = seg_to_float(seg)
+            return sfx_cache[name]
+
+        for frame_idx, name, repeat in self.sound_events:
+            start = frame_idx * FRAME_SIZE
+            sfx   = load_sfx(name)
+
+            for i in range(repeat + 1):
+                off = start + i * len(sfx)
+                if off >= total_samples:
+                    break
+                end   = min(off + len(sfx), total_samples)
+                block = sfx[:end - off]
+                master[off:end] += block
+
+        master = soft_limiter(master)
+
+        dither = np.random.uniform(-1e-4, 1e-4, size=master.shape)
+        pcm16 = ((master + dither) * 32767.0).clip(-32768, 32767).astype('<i2')
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmpfile:
+            AudioSegment(
+            pcm16.tobytes(),
+            frame_rate=SR,
+            sample_width=2,
+            channels=2
+            ).export(tmpfile.name, format="wav")
+            self.audio_tempfile = tmpfile.name
+
+        
+
+            
     def first_draw(self):
         if self.video_mode:
             image = Image.new(
@@ -152,46 +241,31 @@ class HonseGame:
             for character in self.characters:
                 character.ui_element.first_draw(draw)
             self.background_image = image
+            temp_video_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            self.video_tempfile = temp_video_file.name
             self.video_writer = subprocess.Popen(
                 [
                     "ffmpeg",
                     "-y",
-                    "-f",
-                    "rawvideo",
-                    "-vcodec",
-                    "rawvideo",
-                    "-pix_fmt",
-                    "rgba",
-                    "-s",
-                    f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
-                    "-r",
-                    str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame), #TODO: render at double speed, may want to change later
-                    "-i",
-                    "-",
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "ultrafast",
-                    "-crf",
-                    "30",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-movflags",
-                    "+faststart",
-                    "-loglevel",
-                    "warning",
-                    "-tune",
-                    "zerolatency",
-                    "-threads",
-                    "2",
-                    self.video_out_path,
+
+                    # VIDEO -------------
+                    "-f", "rawvideo", "-pix_fmt", "rgba",
+                    "-s", f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
+                    "-r", str(self.FRAMES_PER_SECOND),
+                    "-i", "-",          
+
+                    # OUTPUT ------------
+                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "192k",
+                    self.video_tempfile
                 ],
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
 
+            
             self.current_frame_image = Image.new(
                 "RGBA", (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
             )
@@ -523,11 +597,12 @@ class HonseGame:
         finally:
             if self.video_mode:
                 try:
-                    self.video_writer.stdin.close()  # signal EOF to FFmpeg
+                    self.video_writer.stdin.close()
+                    print("Closed FFmpeg stdin.")
                 except Exception as e:
                     print(f"Failed to close FFmpeg stdin: {e}")
-
                 try:
+                    print("Waiting for FFmpeg to finish")
                     self.video_writer.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     print("FFmpeg did not terminate in time, killing it.")
@@ -540,11 +615,32 @@ class HonseGame:
                     )
                 else:
                     print("FFmpeg finished successfully.")
+                print("Rendering audio")
+                self.render_audio()
+                print("Adding audio to video")
+                subprocess.run([
+                    "ffmpeg",
+                    "-y",
+                    "-i", self.video_tempfile,
+                    "-i", self.audio_tempfile,
+                    "-c:v", "copy",
+                    "-c:a", "aac",
+                    "-b:a", "192k",
+                    "output.mp4"
+                    ],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                print("Audio added to video")
+                
+
 
 
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
-game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, False)
+game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", False, True)
 game.add_character(
     "Saurbot",
     0,

@@ -4,6 +4,10 @@ import random
 import math
 import numpy as np
 import honse_data
+import os
+
+#may break things
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 # lots of particle variables can be changed each frame by passing a function instead of a constant

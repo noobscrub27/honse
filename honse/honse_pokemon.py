@@ -7,7 +7,10 @@ import honse_particles
 import enum
 import numpy as np
 from PIL import Image, ImageDraw
+import os
 
+#may break things
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 class MoveCategories(enum.Enum):
     PHYSICAL = 0
