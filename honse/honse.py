@@ -299,6 +299,11 @@ class HonseGame:
             else:
                 pygame.draw.circle(self.screen, color, (x, y), int(radius))
         if self.video_mode: 
+            if rgba[3] == 255:
+                self.current_frame_draw.ellipse(
+                    (x - radius, y - radius, x + radius, y + radius), fill=rgba
+                )
+                return
             # Doing alpha-composite magic here
             # - lina
             min_x = max(0, int(x - radius))
@@ -364,6 +369,10 @@ class HonseGame:
                     (c * x - s * y + x_pos, s * x + c * y + y_pos)
                     for (x, y) in rectCoords
                 ]
+                
+            if rgba[3] == 255:
+                self.current_frame_draw.polygon(verticies, fill=rgba)
+                return
             # omg doing alpha-composite magic here too
             # - lina
             xs, ys = zip(*verticies)
