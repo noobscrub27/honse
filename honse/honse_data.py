@@ -4,9 +4,6 @@ import math
 import numpy as np
 import os
 
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
-
 COLLISION_INTANGIBILITY = 30
 FRAMES_PER_SECOND = 60
 FRAME_LENGTH_SECONDS = 1 / FRAMES_PER_SECOND
@@ -16,6 +13,9 @@ SPEED_CAP = 30
 FONT_NAME = os.path.join("cascadia-code", "Cascadia.ttf")
 
 TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
+
+BASE_WIDTH = 1920
+BASE_HEIGHT = 1080
 
 
 class UIElement:

@@ -24,31 +24,6 @@ import numpy as np
 
 
 class HonseGame:
-    # [pygame font, PIL font, height of font in pixels]
-    message_fonts = {
-        16: [
-            pygame.font.Font(honse_data.FONT_NAME, 16),
-            ImageFont.truetype(honse_data.FONT_NAME, 16),
-        ],
-        24: [
-            pygame.font.Font(honse_data.FONT_NAME, 24),
-            ImageFont.truetype(honse_data.FONT_NAME, 24),
-        ],
-        28: [
-            pygame.font.Font(honse_data.FONT_NAME, 28),
-            ImageFont.truetype(honse_data.FONT_NAME, 28),
-        ],
-        48: [
-            pygame.font.Font(honse_data.FONT_NAME, 48),
-            ImageFont.truetype(honse_data.FONT_NAME, 48),
-        ],
-    }
-    for value in message_fonts.values():
-        value.append(value[0].get_ascent() - value[0].get_descent())
-    del value
-    message_y_offset = 5
-    message_x_offset = 10
-
     def __init__(
         self,
         json_path,
@@ -57,17 +32,20 @@ class HonseGame:
         pygame_mode,
         video_mode,
         width=1920,
-        height=1080,
         fps=60,
     ):
+        self.pygame_mode = pygame_mode
+        self.video_mode = video_mode
         self.game_end_timer = 300
         self.game_end = False
         self.SCREEN_WIDTH = width
-        self.SCREEN_HEIGHT = height
+        self.SCREEN_HEIGHT = int(width * 9/16)
         self.FRAMES_PER_SECOND = fps
-        self.screen = pygame.display.set_mode(
-            (honse_data.SCREEN_WIDTH, honse_data.SCREEN_HEIGHT)
-        )
+        if self.pygame_mode:
+            print((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
+            self.screen = pygame.display.set_mode((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
+        else:
+            self.screen = pygame.surface((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
         self.running = True
         self.dt = 0
@@ -83,17 +61,47 @@ class HonseGame:
         self.all_frame_messages = []
         # message log for other purposes
         self.message_log = []
-        self.pygame_mode = pygame_mode
-        self.video_mode = video_mode
         self.background = background
         self.current_frame_image = None
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
-        self.draw_every_nth_frame = 2
+        self.draw_every_nth_frame = 1
         self.music = music
+        self.width_ratio = self.SCREEN_WIDTH / 1920
         self.load_map()
         self.create_sounds()
         self.play_music()
+        self.font_setup()
+
+    def times_width_ratio(self, value):
+        # is it faster to do it this way? idk!!!!
+        # does it matter? i also dont know!!!!!!
+        return value if self.width_ratio == 1 else int(max(1, value*self.width_ratio))
+
+    def font_setup(self):
+        # [pygame font, PIL font, height of font in pixels]
+        self.message_fonts = {
+            16: [
+                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(16)),
+                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(16)),
+            ],
+            24: [
+                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(24)),
+                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(24)),
+            ],
+            28: [
+                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(28)),
+                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(28)),
+            ],
+            48: [
+                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(48)),
+                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(48)),
+            ],
+        }
+        for value in self.message_fonts.values():
+            value.append(value[0].get_ascent() - value[0].get_descent())
+        self.message_y_offset = 5
+        self.message_x_offset = 10
 
     def play_music(self):
         if self.pygame_mode:
@@ -158,7 +166,7 @@ class HonseGame:
                     "-s",
                     f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
                     "-r",
-                    str(self.FRAMES_PER_SECOND / 2 * self.draw_every_nth_frame), #TODO: render at double speed, may want to change later
+                    str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame), #TODO: render at double speed, may want to change later
                     "-i",
                     "-",
                     "-c:v",
@@ -204,6 +212,9 @@ class HonseGame:
             self.current_frame_image.paste(self.background_image)
 
     def draw_circle(self, x, y, radius, rgba):
+        x = self.times_width_ratio(x)
+        y = self.times_width_ratio(y)
+        radius = self.times_width_ratio(radius)
         if self.pygame_mode:
             color = pygame.Color(rgba[0], rgba[1], rgba[2], rgba[3])
             if rgba[3] != 255:
@@ -222,6 +233,10 @@ class HonseGame:
     # https://stackoverflow.com/questions/34747946/rotating-a-square-in-pil
     # answer by Sparkler
     def draw_rectangle(self, x_pos, y_pos, width, height, rotation, rgba):
+        x_pos = self.times_width_ratio(x_pos)
+        y_pos = self.times_width_ratio(y_pos)
+        width = self.times_width_ratio(width)
+        height = self.times_width_ratio(height)
         if self.pygame_mode:
             color = pygame.Color(rgba[0], rgba[1], rgba[2], rgba[3])
             if rotation % 360 != 0:
@@ -281,6 +296,8 @@ class HonseGame:
         return img
 
     def draw_text(self, x, y, text, font_key, r, g, b, a):
+        x = self.times_width_ratio(x)
+        y = self.times_width_ratio(y)
         if self.pygame_mode:
             color = pygame.Color(r, g, b)
             text_surface = self.message_fonts[font_key][0].render(text, False, color)
@@ -327,7 +344,7 @@ class HonseGame:
 
     def render_all_messages(self):
         # this is where the next text box should be drawn
-        y = self.SCREEN_HEIGHT
+        y = honse_data.BASE_HEIGHT
         if len(self.current_frame_messages):
             reversed_copy = [msg for msg in self.current_frame_messages]
             reversed_copy.reverse()
@@ -345,7 +362,7 @@ class HonseGame:
                     a = 255
                 else:
                     a = max(127, (192 - 16 * frames_since_most_recent_frame))
-                x = int(self.SCREEN_WIDTH * 0.75) + self.message_x_offset
+                x = int(honse_data.BASE_WIDTH * 0.75) + self.message_x_offset
                 y -= self.message_y_offset + self.message_fonts[font_key][2]
                 if y < 0:
                     return
@@ -517,41 +534,9 @@ class HonseGame:
                     print("FFmpeg finished successfully.")
 
 
-"""
-characters = [
-    honse_pokemon.Character("Saurbot", 350, 250, 1, 100, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png")
-]
-
-ui_elements = [
-    honse_data.UIElement(0, honse_data.SCREEN_HEIGHT-135, characters[0]),
-    honse_data.UIElement(360, honse_data.SCREEN_HEIGHT-135, characters[0]),
-    honse_data.UIElement(720, honse_data.SCREEN_HEIGHT-135, characters[0]),
-    honse_data.UIElement(1080, honse_data.SCREEN_HEIGHT-135, characters[0]),
-    honse_data.UIElement(0, honse_data.SCREEN_HEIGHT-270, characters[0]),
-    honse_data.UIElement(360, honse_data.SCREEN_HEIGHT-270, characters[0]),
-    honse_data.UIElement(720, honse_data.SCREEN_HEIGHT-270, characters[0]),
-    honse_data.UIElement(1080, honse_data.SCREEN_HEIGHT-270, characters[0])
-]
-
-characters = [
-    honse_pokemon.Character("P1", 350, 250, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P2", 400, 250, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P3", 450, 250, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P4", 500, 250, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P1", 350, 325, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P2", 400, 325, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P3", 450, 325, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png"),
-    honse_pokemon.Character("P4", 500, 325, 1, 1, honse_pokemon.stats, [], [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]], "bob.png")]
-
-moves = {
-}
-"""
-basic_moveset = [
-    honse_pokemon.moves["Tackle"],
-    honse_pokemon.moves["Water Gun"],
-    honse_pokemon.moves["Giga Impact"],
-]
-game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, True, 1920, 1080, 60)
+# i am lazy and dont want to resize the map rn
+# plz pass in a map that is 3/4 the size of height and width for the second parameter
+game = HonseGame("map02.json", "map02size75.png", "hgss kanto wild theme.mp3", True, True, 1440)
 game.add_character(
     "Saurbot",
     0,

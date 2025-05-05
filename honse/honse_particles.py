@@ -404,43 +404,47 @@ def flame_animation(game, x, y, lifetime=(24,36)):
 
 
 def psychic_animation(game, x, y, lifetime = 12):
-    x_size = 12
-    y_size = 8
-    x_speed = 5
-    y_speed_left = lambda a, b: np.cos(np.radians(360*b)) * 2
-    y_speed_right = lambda a, b: np.sin(np.radians(360*b)) * -2
+    x_size = 10
+    y_size = 6
+    y_growth = lambda a, b: 0 if b > 0.5 else -y_size/lifetime
+    x_speed = 6
+    y_speed_left = lambda a, b: np.cos(np.radians(360*b*4)) * 8
+    y_speed_right = lambda a, b: np.sin(np.radians(360*b*4)) * -8
     particle_count = 10
+    highest_lifetime = lifetime[1] if type(lifetime) is tuple else lifetime
     for i in range(particle_count):
+        print(x-(x_speed*highest_lifetime/2) - (x_size/2))
+        print(x+(x_speed*highest_lifetime/2) + (x_size/2))
         particle_left = RectParticle(
             game,
-            x-(x_speed*lifetime/2),
+            x-(x_speed*highest_lifetime/2) - (x_size/2),
             y + (y_size*(i-(particle_count/2))),
             x_speed,
             y_speed_left,
             x_size, y_size,
-            0, 0,
+            0, y_growth,
             0,
             200,
             66,
             245,
-            127,
+            85,
             randomize_if_tuple(lifetime),
             None,
             2
         )
         particle_right = RectParticle(
             game,
-            x+(x_speed*lifetime/2),
+            x+(x_speed*highest_lifetime/2) + (x_size/2),
             y - (y_size*(i-(particle_count/2))),
             -x_speed,
             y_speed_right,
             x_size, y_size,
-            0, 0,
+            0, y_growth,
             0,
             166,
             36,
             36,
-            127,
+            85,
             lifetime[1] if type(lifetime) is tuple else lifetime,
             None,
             2

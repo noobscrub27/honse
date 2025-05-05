@@ -157,9 +157,9 @@ class Character:
         self.hp = self.get_max_hp()
         self.image_name = image
         self.get_image()
-        ui_x = self.game.SCREEN_WIDTH * (self.teammate_id * 3) / 16
-        ui_y = self.game.SCREEN_HEIGHT - (
-            (self.game.SCREEN_HEIGHT / 8) * (2 - self.team)
+        ui_x = honse_data.BASE_WIDTH * (self.teammate_id * 3) / 16
+        ui_y = honse_data.BASE_HEIGHT - (
+            (honse_data.BASE_HEIGHT / 8) * (2 - self.team)
         )
         self.ui_element = honse_data.UIElement(ui_x, ui_y, self)
         self.hit_sound_to_play = None
@@ -184,6 +184,7 @@ class Character:
         cropped_image = image.crop(cropped_image)
         self.width, self.height = cropped_image.size
         self.team_circle_radius = math.ceil(max(self.width, self.height) / 2) + 3
+        self.radius = self.team_circle_radius
         # the background is the team colored circle
         background_size = 2*self.team_circle_radius
         background_image = image = Image.new(
@@ -361,12 +362,13 @@ class Character:
             ) * self.current_speed
 
     def use_move(self, target):
-        for i, move in enumerate(self.moves):
-            if self.cooldowns[i] == 0:
-                success = move.on_use(self, target=target)
-                if success:
-                    self.on_cooldown(i)
-                    return
+        if not self.is_fainted():
+            for i, move in enumerate(self.moves):
+                if self.cooldowns[i] == 0:
+                    success = move.on_use(self, target=target)
+                    if success:
+                        self.on_cooldown(i)
+                        return
 
     # Lina functions start here
     def is_colliding(self, other):
@@ -458,22 +460,9 @@ class Character:
         else:
             surface = self.surface
             image = self.image
-        if not self.is_fainted():
-            '''
-            color = (
-                honse_data.TEAM_COLORS[self.team][0],
-                honse_data.TEAM_COLORS[self.team][1],
-                honse_data.TEAM_COLORS[self.team][2],
-                85,
-            )
-            self.game.draw_circle(
-                self.position[0], self.position[1], self.visual_circle_radius, color
-            )
-            '''
-            pass
         self.game.draw_image(
-            self.position[0] - (self.width // 2),
-            self.position[1] - (self.height // 2),
+            int((self.position[0] - (self.width / 2)) * self.game.width_ratio),
+            int((self.position[1] - (self.height / 2)) * self.game.width_ratio),
             surface,
             image,
         )
@@ -546,7 +535,7 @@ class BasicAttack(Move):
         target.hp -= damage
         target.hitstop = hitstop
         target.current_speed += knockback
-        self.play_effects(user, user.position[0], user.position[1])
+        self.play_effects(user, target.position[0], target.position[1])
         effectiveness_quote, effectiveness_sound = get_type_effectiveness_stuff(self, target)
         if effectiveness_quote:
             user.game.display_message(effectiveness_quote, 16, [0, 0, 0])
@@ -555,7 +544,6 @@ class BasicAttack(Move):
         if target.hp <= 0:
             user.game.display_message(f"{target.name} fainted!", 24, [127, 0, 0])
             target.hit_sound_to_play = "In-Battle Faint No Health"
-        self.animation(user.game, target.position[0], target.position[1])
         return True
 
 
