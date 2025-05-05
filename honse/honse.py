@@ -68,7 +68,7 @@ class HonseGame:
         self.current_frame_image = None
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
-        self.draw_every_nth_frame = 1
+        self.draw_every_nth_frame = 2
         self.music = music
         self.width_ratio = self.SCREEN_WIDTH / 1920
         self.sound_events = []
@@ -251,7 +251,7 @@ class HonseGame:
                     # VIDEO -------------
                     "-f", "rawvideo", "-pix_fmt", "rgba",
                     "-s", f"{self.SCREEN_WIDTH}x{self.SCREEN_HEIGHT}",
-                    "-r", str(self.FRAMES_PER_SECOND),
+                    "-r", str(self.FRAMES_PER_SECOND / self.draw_every_nth_frame),
                     "-i", "-",          
 
                     # OUTPUT ------------
