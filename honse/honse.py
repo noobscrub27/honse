@@ -298,10 +298,26 @@ class HonseGame:
                 self.screen.blit(circle_surface, (x - radius, y - radius))
             else:
                 pygame.draw.circle(self.screen, color, (x, y), int(radius))
-        if self.video_mode:
-            self.current_frame_draw.ellipse(
-                (x - radius, y - radius, x + (radius - 1), y + (radius - 1)), fill=rgba
-            )
+        if self.video_mode: 
+            # Doing alpha-composite magic here
+            # - lina
+            min_x = max(0, int(x - radius))
+            min_y = max(0, int(y - radius))
+            max_x = min(self.SCREEN_WIDTH, int(x + radius))
+            max_y = min(self.SCREEN_HEIGHT, int(y + radius))
+
+            box_width = max_x - min_x
+            box_height = max_y - min_y
+            if box_width <= 0 or box_height <= 0:
+                return
+
+            overlay = Image.new("RGBA", (box_width, box_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay, "RGBA")
+            draw.ellipse((0, 0, box_width - 1, box_height - 1), fill=rgba)
+
+            region = self.current_frame_image.crop((min_x, min_y, max_x, max_y))
+            blended = Image.alpha_composite(region, overlay)
+            self.current_frame_image.paste(blended, (min_x, min_y))
 
     # https://stackoverflow.com/questions/34747946/rotating-a-square-in-pil
     # answer by Sparkler
@@ -348,7 +364,30 @@ class HonseGame:
                     (c * x - s * y + x_pos, s * x + c * y + y_pos)
                     for (x, y) in rectCoords
                 ]
-            self.current_frame_draw.polygon(verticies, fill=rgba)
+            # omg doing alpha-composite magic here too
+            # - lina
+            xs, ys = zip(*verticies)
+            min_x, max_x = int(min(xs)), int(max(xs))
+            min_y, max_y = int(min(ys)), int(max(ys))
+            min_x = max(0, min_x)
+            min_y = max(0, min_y)
+            max_x = min(self.SCREEN_WIDTH, max_x)
+            max_y = min(self.SCREEN_HEIGHT, max_y)
+            if max_x <= min_x or max_y <= min_y:
+                return
+
+            box_width = max_x - min_x
+            box_height = max_y - min_y
+
+            overlay = Image.new("RGBA", (box_width, box_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay, "RGBA")
+            shifted_verts = [(x - min_x, y - min_y) for x, y in verticies]
+            draw.polygon(shifted_verts, fill=rgba)
+
+            region = self.current_frame_image.crop((min_x, min_y, max_x, max_y))
+            blended = Image.alpha_composite(region, overlay)
+            self.current_frame_image.paste(blended, (min_x, min_y))
+
 
     def draw_image(self, x, y, pygame_surface, pil_image):
         if self.pygame_mode:
