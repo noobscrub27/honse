@@ -68,7 +68,7 @@ class HonseGame:
         self.current_frame_image = None
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
-        self.draw_every_nth_frame = 2
+        self.draw_every_nth_frame = 1
         self.music = music
         self.width_ratio = self.SCREEN_WIDTH / 1920
         self.sound_events = []
@@ -255,6 +255,7 @@ class HonseGame:
                     "-i", "-",          
 
                     # OUTPUT ------------
+                    "-vf", "format=yuv420p",
                     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
                     "-c:a", "aac", "-b:a", "192k",
                     self.video_tempfile
