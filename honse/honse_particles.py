@@ -1,3 +1,4 @@
+from contextlib import redirect_stderr
 import pygame
 import random
 import math
@@ -24,10 +25,20 @@ class CircleParticle:
         green,
         blue,
         alpha,
-        lifetime=None,
-        death_function=None,
-        leave_trail_every_nth_frame=-1 # leaves a trail every nth frame. -1 for no trail
+        **kwargs
     ):
+        lifetime = None
+        if "lifetime" in kwargs:
+            lifetime = kwargs["lifetime"]
+        self.death_function = None
+        if "death_function" in kwargs:
+            self.death_function = kwargs["death_function"]
+        self.leave_trail_every_nth_frame = -1
+        if "leave_trail_every_nth_frame" in kwargs:
+            self.leave_trail_every_nth_frame = kwargs["leave_trail_every_nth_frame"]
+        self.render_on_top = False
+        if "render_on_top" in kwargs:
+            self.render_on_top = kwargs["render_on_top"]
         self.game = game
         self.x = x
         self.y = y
@@ -44,8 +55,7 @@ class CircleParticle:
         self.remaining_lifetime = lifetime
         self.lived_lifetime = 0
         self.color = (255, 255, 255, 255)
-        self.death_function = death_function
-        self.leave_trail_every_nth_frame = leave_trail_every_nth_frame
+        # leaves a trail every nth frame. -1 for no trail
 
 
     def turn_into_function(self, x):
@@ -77,7 +87,11 @@ class CircleParticle:
 
     def kill(self):
         if self.death_function is not None:
-            self.death_function(self.game, self.x, self.y)
+            death_function = self.death_function[0]
+            recursions_left = self.death_function[1]
+            if recursions_left > 0:
+                recursions_left -= 1
+                death_function(self.game, self.x, self.y, recursion_count=recursions_left)
         del self
 
     def spawn_trail_particle(self):
@@ -93,7 +107,7 @@ class CircleParticle:
                     self.green,
                     self.blue,
                     self.alpha,
-                    self.max_lifetime)
+                    lifetime=self.max_lifetime)
             elif type(self) == RectParticle:
                 particle = RectParticle(
                     self.game,
@@ -106,7 +120,7 @@ class CircleParticle:
                     self.green,
                     self.blue,
                     self.alpha,
-                    self.max_lifetime)
+                    lifetime=self.max_lifetime)
             particle.lived_lifetime = self.lived_lifetime
             particle.remaining_lifetime = self.remaining_lifetime
             self.game.particle_spawner.add_particles(particle)
@@ -146,9 +160,7 @@ class RectParticle(CircleParticle):
         green,
         blue,
         alpha,
-        lifetime=None,
-        death_function=None,
-        leave_trail_every_nth_frame=-1
+        **kwargs
     ):
         self.width = width
         self.height = height
@@ -167,9 +179,7 @@ class RectParticle(CircleParticle):
             green,
             blue,
             alpha,
-            lifetime,
-            death_function,
-            leave_trail_every_nth_frame
+            **kwargs
         )
 
     def update_size(self, lifetime_remaining):
@@ -198,10 +208,11 @@ class ParticleSpawner:
         self.particles = []
         self.game = game
 
-    def emit(self):
+    def emit(self, render_top=False):
         if self.particles:
-            self.delete_particles()
             for particle in self.particles:
+                if particle.render_on_top != render_top:
+                    continue
                 particle.draw()
                 particle.update()
                 particle.update_lifetime()
@@ -262,7 +273,13 @@ def randomize_if_tuple(value):
     else:
         return value
 
-def impact_animation(game, x, y, lifetime=10):
+def impact_animation(game, x, y, **kwargs):
+    lifetime = 10
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
     for i in range(random.randint(8, 12)):
         size = random.randint(8, 12)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -282,12 +299,19 @@ def impact_animation(game, x, y, lifetime=10):
             random.randint(100, 200),
             52,
             255,
-            randomize_if_tuple(lifetime),
+            lifetime=randomize_if_tuple(lifetime),
+            render_on_top=True
         )
         game.particle_spawner.add_particles(particle)
 
 
-def large_impact_animation(game, x, y, lifetime=10):
+def large_impact_animation(game, x, y, **kwargs):
+    lifetime = 10
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
     for i in range(random.randint(20, 30)):
         size = random.randint(12, 16)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -307,12 +331,18 @@ def large_impact_animation(game, x, y, lifetime=10):
             random.randint(100, 200),
             52,
             255,
-            randomize_if_tuple(lifetime),
+            lifetime=randomize_if_tuple(lifetime),
         )
         game.particle_spawner.add_particles(particle)
 
 
-def spark_animation(game, x, y, lifetime=10):
+def spark_animation(game, x, y, **kwargs):
+    lifetime = 10
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
     for i in range(random.randint(3, 5)):
         size = random.randint(3, 4)
         x_speed = random.randint(2, 4) * random.choice([-1, 1])
@@ -332,12 +362,52 @@ def spark_animation(game, x, y, lifetime=10):
             random.randint(185, 225),
             random.randint(20, 80),
             255,
-            randomize_if_tuple(lifetime),
+            lifetime=randomize_if_tuple(lifetime),
+            death_function=(spark_animation, recursion_count)
         )
         game.particle_spawner.add_particles(particle)
 
 
-def splash_animation(game, x, y, lifetime=(24,36)):
+def electric_spark_animation(game, x, y, **kwargs):
+    lifetime = 15
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    for i in range(random.randint(3, 5)):
+        size = random.randint(5, 8)
+        speed = random.randint(2, 4)
+        x_speed = speed * random.choice([-1, 1])
+        y_speed = speed * random.choice([-1, 1])
+        particle = RectParticle(
+            game,
+            x,
+            y,
+            x_speed,
+            y_speed,
+            size,
+            size,
+            -0.2,
+            -0.2,
+            random.randint(0, 45),
+            random.randint(235, 250),
+            random.randint(185, 225),
+            random.randint(20, 80),
+            255,
+            lifetime=randomize_if_tuple(lifetime),
+            death_function=(spark_animation, recursion_count)
+        )
+        game.particle_spawner.add_particles(particle)
+
+
+def splash_animation(game, x, y, **kwargs):
+    lifetime = (24,36)
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
     for i in range(random.randint(8, 12)):
         size = random.randint(8, 12)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
@@ -354,12 +424,19 @@ def splash_animation(game, x, y, lifetime=(24,36)):
             random.randint(70, 170),
             230,
             255,
-            randomize_if_tuple(lifetime),
+            lifetime=randomize_if_tuple(lifetime)
         )
         game.particle_spawner.add_particles(particle)
 
 
-def flame_animation(game, x, y, lifetime=(24,36)):
+def flame_animation(game, x, y, **kwargs):
+    lifetime = (24,36)
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+        print(recursion_count)
     # smoke
     for i in range(random.randint(8, 12)):
         size = random.randint(18, 24)
@@ -377,11 +454,11 @@ def flame_animation(game, x, y, lifetime=(24,36)):
             0,
             0,
             64,
-            randomize_if_tuple(lifetime)
+            lifetime=randomize_if_tuple(lifetime)
     )
         game.particle_spawner.add_particles(particle)
     # flames
-    for i in range(random.randint(16, 24)):
+    for i in range(random.randint(20, 28)):
         size = random.randint(12, 18)
         x_speed = random.randint(-2, 2)
         y_speed = -random.randint(4, 8)
@@ -397,13 +474,19 @@ def flame_animation(game, x, y, lifetime=(24,36)):
             lambda a, b: int(random.randint(33, 99) + (b*120)),
             34,
             180,
-            randomize_if_tuple(lifetime),
-            spark_animation
+            lifetime=randomize_if_tuple(lifetime),
+            death_function=(spark_animation, recursion_count)
         )
         game.particle_spawner.add_particles(particle)
 
 
-def psychic_animation(game, x, y, lifetime = 12):
+def psychic_animation(game, x, y, **kwargs):
+    lifetime = 12
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
     x_size = 10
     y_size = 6
     y_growth = lambda a, b: 0 if b > 0.5 else -y_size/lifetime
@@ -413,8 +496,6 @@ def psychic_animation(game, x, y, lifetime = 12):
     particle_count = 10
     highest_lifetime = lifetime[1] if type(lifetime) is tuple else lifetime
     for i in range(particle_count):
-        print(x-(x_speed*highest_lifetime/2) - (x_size/2))
-        print(x+(x_speed*highest_lifetime/2) + (x_size/2))
         particle_left = RectParticle(
             game,
             x-(x_speed*highest_lifetime/2) - (x_size/2),
@@ -428,9 +509,9 @@ def psychic_animation(game, x, y, lifetime = 12):
             66,
             245,
             85,
-            randomize_if_tuple(lifetime),
-            None,
-            2
+            lifetime=randomize_if_tuple(lifetime),
+            leave_trail_every_nth_frame=1,
+            render_on_top=True
         )
         particle_right = RectParticle(
             game,
@@ -445,9 +526,8 @@ def psychic_animation(game, x, y, lifetime = 12):
             36,
             36,
             85,
-            lifetime[1] if type(lifetime) is tuple else lifetime,
-            None,
-            2
+            lifetime=randomize_if_tuple(lifetime),
+            leave_trail_every_nth_frame=1,
         )
         game.particle_spawner.add_particles(particle_left)
         game.particle_spawner.add_particles(particle_right)
@@ -457,14 +537,20 @@ def psychic_animation(game, x, y, lifetime = 12):
         0, 0,
         1, 0,
         0, 0, 0, 0,
-        lifetime,
-        spark_animation)
+        lifetime=lifetime[1] if type(lifetime) is tuple else lifetime,
+        death_animation=(spark_animation, 1))
     game.particle_spawner.add_particles(impact_particle_spawner)
 
 
-def ice_shatter_animation(game, x, y, lifetime=10):
-    for i in range(random.randint(3, 6)):
-        size = random.randint(8, 12)
+def ice_shatter_animation(game, x, y, **kwargs):
+    lifetime = 10
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    for i in range(random.randint(4, 8)):
+        size = random.randint(8, 24)
         x_speed = random.randint(4, 8) * random.choice([-1, 1])
         y_speed = random.randint(4, 8) * random.choice([-1, 1])
         particle = RectParticle(
@@ -482,21 +568,26 @@ def ice_shatter_animation(game, x, y, lifetime=10):
             random.randint(185, 250),
             random.randint(215, 250),
             155,
-            randomize_if_tuple(lifetime)
+            lifetime=randomize_if_tuple(lifetime)
     )
         game.particle_spawner.add_particles(particle)
 
 
-def ice_animation(game, x, y, lifetime=30):
-    size = 35
+def ice_animation(game, x, y, **kwargs):
+    lifetime = 30
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
     growth = 2
     angle = random.randint(35,55)
-    for i in range(8, 12):
-        size = random.randint(8, 12)
+    for i in range(12, 18):
+        size = random.randint(15, 30)
         particle = RectParticle(
             game,
-            x - size/2 + random.randint(-25,25),
-            y - size/2 + random.randint(-25,25),
+            x + random.randint(-size,size*2),
+            y + random.randint(-size,size*2),
             -growth/2,
             -growth/2,
             size,
@@ -507,9 +598,98 @@ def ice_animation(game, x, y, lifetime=30):
             60,
             random.randint(185, 250),
             random.randint(215, 250),
-            100,
-            randomize_if_tuple(lifetime),
-            ice_shatter_animation
+            random.randint(45, 90),
+            lifetime=randomize_if_tuple(lifetime),
+            death_animation=(ice_shatter_animation, recursion_count),
+            render_on_top=random.random() > 0.5
         )
         angle += 45
         game.particle_spawner.add_particles(particle)
+
+def bolt_animation(game, x, y, **kwargs):
+    lifetime = 24
+    recursion_count = 3
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    lifetime = randomize_if_tuple(lifetime)
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    height = 120
+    bolt_spawn = y-(3*height//4)
+    width = 12
+    r = lambda a, b: 240 if a % 12 >= 4 else 230
+    g = lambda a, b: 223 if a % 12 >= 4 else 205
+    b = lambda a, b: 117 if a % 12 >= 4 else 44
+    x_speed = lambda a, b: random.randint(-8, 8) if a % 2 and random.random() < 0.5 else 0
+    bolt_particle = RectParticle(
+        game,
+        x-width//2, bolt_spawn, x_speed, 0,
+        width, height, 0, 0, 0,
+        r, g, b, 180,
+        lifetime=lifetime,
+        render_on_top=True)
+    for i in range(lifetime//2):
+        game.particle_spawner.add_particles(CircleParticle(
+            game,
+            x, bolt_spawn+height, 0, 0, 1, 0,
+            0, 0, 0, 0,
+            lifetime=max(1,i*2), 
+            death_function=(electric_spark_animation, 1),
+            render_on_top=True))
+    sparkle_spawner = CircleParticle(
+        game,
+        x, bolt_spawn+height, 0, 0, 1, 0,
+        0, 0, 0, 0,
+        lifetime=lifetime, 
+        death_function=(electric_spark_animation, recursion_count),
+        render_on_top=True)
+    game.particle_spawner.add_particles(bolt_particle)
+    game.particle_spawner.add_particles(sparkle_spawner)
+
+
+def punch_animation(game, x, y, **kwargs):
+    lifetime = 24
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    x_size = 40
+    y_size = 30
+    negative_rotation = random.choice([-1, 1])
+    rotation = lambda a, b: (negative_rotation * 15) - (negative_rotation * 15 * b * 4) if b > 0.75 else 0
+    highest_lifetime = lifetime[1] if type(lifetime) is tuple else lifetime
+    game.particle_spawner.add_particles(RectParticle(
+        game,
+        x-x_size//2,
+        y-y_size//2,
+        0,
+        0,
+        x_size, y_size,
+        lambda a, b: 0 if b > 0.25 else -x_size/10,
+        lambda a, b: 0 if b > 0.25 else -y_size/10,
+        rotation,
+        235, 134, 26,
+        85,
+        lifetime=randomize_if_tuple(lifetime[1] if type(lifetime) is tuple else lifetime),
+        leave_trail_every_nth_frame=1,
+        render_on_top=True
+    ))
+    impact_animation(game, x, y)
+
+def punch_spawner_animation(game, x, y, **kwargs):
+    lifetime = (1, 12)
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    for i in range(5):
+        x = x + random.randint(-20, 20)
+        y = y + random.randint(-15, 15)
+        game.particle_spawner.add_particles(CircleParticle(
+        game,
+        x, y, 0, 0, 1, 0,
+        0, 0, 0, 0,
+        lifetime=randomize_if_tuple(lifetime), 
+        death_function=(punch_animation, recursion_count)))

@@ -42,10 +42,9 @@ class HonseGame:
         self.SCREEN_HEIGHT = int(width * 9/16)
         self.FRAMES_PER_SECOND = fps
         if self.pygame_mode:
-            print((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
             self.screen = pygame.display.set_mode((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
         else:
-            self.screen = pygame.surface((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
+            self.screen = pygame.display.set_mode((self.SCREEN_WIDTH , self.SCREEN_HEIGHT), flags=pygame.HIDDEN)
         self.clock = pygame.time.Clock()
         self.running = True
         self.dt = 0
@@ -451,8 +450,10 @@ class HonseGame:
                 # fill the screen with a color to wipe away anything from last frame
                 self.draw_background()
 
+                self.particle_spawner.delete_particles()
                 self.particle_spawner.emit()
                 for spawner in self.temporary_particle_spawners:
+                    spawner.delete_particles()
                     spawner.emit()
 
                 # update ui
@@ -493,6 +494,10 @@ class HonseGame:
                 ):
                     character.draw()
 
+                self.particle_spawner.emit(True)
+                for spawner in self.temporary_particle_spawners:
+                    spawner.emit(True)
+
                 if not self.game_end:
                     self.check_game_end()
 
@@ -500,7 +505,10 @@ class HonseGame:
                 if self.running and self.frame_count % self.draw_every_nth_frame == 0:
                     self.show_display()
 
-                self.clock.tick(0)
+                if self.pygame_mode:
+                    self.clock.tick(self.FRAMES_PER_SECOND)
+                else:
+                    self.clock.tick(0)
                 average_fps.append(self.clock.get_fps())
                 if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
                     print(f"FPS: {np.mean(average_fps)}")
@@ -536,7 +544,7 @@ class HonseGame:
 
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
-game = HonseGame("map02.json", "map02size75.png", "hgss kanto wild theme.mp3", True, True, 1440)
+game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, False)
 game.add_character(
     "Saurbot",
     0,

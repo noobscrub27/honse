@@ -489,8 +489,6 @@ class Move:
     def on_use(self, user, **kwargs):
         self.play_effects(user, user.position[0], user.position[1])
 
-    def send_message(self, text):
-        print(text)
 
 
 class BasicAttack(Move):
@@ -553,7 +551,7 @@ moves = {
         pokemon_types["Normal"],
         MoveCategories.PHYSICAL,
         900,
-        honse_particles.impact_animation,
+        honse_particles.large_impact_animation,
         -1,
         "Tackle",
         45,
@@ -628,6 +626,34 @@ moves = {
         "Ice Ball",
         90,
         30,
+        0,
+        4,
+        0.5,
+        ),
+    "Thunderbolt": BasicAttack(
+        "Thunderbolt",
+        pokemon_types["Electric"],
+        MoveCategories.SPECIAL,
+        2800,
+        honse_particles.bolt_animation,
+        -1,
+        "Zap Cannon",
+        90,
+        30,
+        0,
+        4,
+        0.5,
+        ),
+    "Close Combat": BasicAttack(
+        "Close Combat",
+        pokemon_types["Fighting"],
+        MoveCategories.PHYSICAL,
+        350,
+        honse_particles.punch_spawner_animation,
+        -1,
+        "Close Combat",
+        90,
+        15,
         0,
         4,
         0.5,
