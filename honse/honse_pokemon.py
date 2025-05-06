@@ -224,19 +224,9 @@ class Character:
                 a.point(lambda x: int(x * 1 / 3)),
             ),
         )
-        self.surface = pygame.image.fromstring(
-            self.image.tobytes(), self.image.size, self.image.mode
-        ).convert_alpha()
-        self.intangible_surface = pygame.image.fromstring(
-            self.intangible_image.tobytes(),
-            self.intangible_image.size,
-            self.intangible_image.mode,
-        ).convert_alpha()
-        self.fainted_surface = pygame.image.fromstring(
-            self.fainted_image.tobytes(),
-            self.fainted_image.size,
-            self.fainted_image.mode,
-        ).convert_alpha()
+        self.surface = honse_data.image_to_surface(self.image)
+        self.intangible_surface = honse_data.image_to_surface(self.intangible_image)
+        self.fainted_surface = honse_data.image_to_surface(self.fainted_image)
 
     def same_team(self, other):
         return self.team == other.team
@@ -660,5 +650,19 @@ moves = {
         0,
         4,
         0.5,
-        )
+        ),
+    "Vine Whip": BasicAttack(
+        "Vine Whip",
+        pokemon_types["Grass"],
+        MoveCategories.PHYSICAL,
+        120,
+        honse_particles.razor_leaf_animation,
+        -1,
+        "Razor Leaf",
+        40,
+        20,
+        0,
+        4,
+        0.5,
+        ),
 }

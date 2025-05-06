@@ -3,6 +3,7 @@ import random
 import math
 import numpy as np
 import os
+from PIL import Image
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +22,26 @@ TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
 BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
 
+def image_to_surface(image):
+    return pygame.image.fromstring(
+        image.tobytes(), image.size, image.mode
+    ).convert_alpha()
+
+def alpha_change(image, alpha_percent):
+    r, g, b, a = image.split()
+    return Image.merge(
+        "RGBA", (r, g, b, a.point(lambda x: (x * alpha_percent) // 100))
+    )
+
+def from_sprite_sheet(image, width):
+    images = []
+    sprite_sheet_width, sprite_sheet_height = image.size
+    if sprite_sheet_width % width != 0:
+        raise ValueError(f"sprite_sheet_width must be evenly divisible by width. (sprite_sheet_width: {sprite_sheet_width}, width: {width}")
+    for i in range(sprite_sheet_width // width):
+        x = i * width
+        images.append(image.crop((x, 0, x+width, sprite_sheet_height)))
+    return images
 
 class UIElement:
     width = 360

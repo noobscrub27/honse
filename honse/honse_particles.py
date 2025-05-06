@@ -5,10 +5,10 @@ import math
 import numpy as np
 import honse_data
 import os
+from PIL import Image
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 
 # lots of particle variables can be changed each frame by passing a function instead of a constant
 # these functions must take two parameters.
@@ -74,14 +74,6 @@ class CircleParticle:
         else:
             return 1
 
-    def update_size(self, lifetime_remaining):
-        self.radius += self.growth(self.lived_lifetime, lifetime_remaining)
-
-    def update_lifetime(self):
-        self.lived_lifetime += 1
-        if self.remaining_lifetime is not None:
-            self.remaining_lifetime -= 1
-
     def check_alive(self):
         if self.radius <= 0:
             return False
@@ -129,19 +121,32 @@ class CircleParticle:
             particle.remaining_lifetime = self.remaining_lifetime
             self.game.particle_spawner.add_particles(particle)
 
+    def update_lifetime(self):
+        self.lived_lifetime += 1
+        if self.remaining_lifetime is not None:
+            self.remaining_lifetime -= 1
+
     def update(self):
         lifetime_remaining = self.get_lifetime_remaining()
+        self.update_size(lifetime_remaining)
+        self.update_position(lifetime_remaining)
+        self.update_color(lifetime_remaining)
+        self.spawn_trail_particle()
+
+    def update_position(self, lifetime_remaining):
         self.x += self.x_speed(self.lived_lifetime, lifetime_remaining)
         self.y += self.y_speed(self.lived_lifetime, lifetime_remaining)
-        self.update_size(lifetime_remaining)
+
+    def update_size(self, lifetime_remaining):
+        self.radius += self.growth(self.lived_lifetime, lifetime_remaining)
+
+    def update_color(self, lifetime_remaining):
         self.color = (
             self.red(self.lived_lifetime, lifetime_remaining),
             self.green(self.lived_lifetime, lifetime_remaining),
             self.blue(self.lived_lifetime, lifetime_remaining),
             self.alpha(self.lived_lifetime, lifetime_remaining),
         )
-        self.spawn_trail_particle()
-
     def draw(self):
         if self.radius >= 1:
             self.game.draw_circle(self.x, self.y, self.radius, self.color)
@@ -205,6 +210,91 @@ class RectParticle(CircleParticle):
             self.game.draw_rectangle(
                 self.x, self.y, self.width, self.height, rotation, self.color
             )
+
+
+class ImageParticle(RectParticle):
+    def __init__(
+        self,
+        game,
+        x,
+        y,
+        x_speed,
+        y_speed,
+        image_key,
+        image_index,
+        **kwargs
+    ):
+        super().__init__(
+        game,
+        x,
+        y,
+        x_speed,
+        y_speed,
+        1,
+        1,
+        0,
+        0,
+        0,
+        255,
+        255,
+        255,
+        255,
+        **kwargs)
+        self.image_key = image_key
+        self.image_index = image_index
+
+    def update_size(self, lifetime_remaining):
+        pass
+
+    def update_color(self, lifetime_remaining):
+        pass
+
+    def update_sprite(self):
+        pass
+
+    def update(self):
+        self.update_sprite()
+        super().update()
+
+    def draw(self):
+        self.game.draw_image(self.x, self.y,
+                             self.game.particle_surfaces[self.image_key][self.image_index],
+                             self.game.particle_images[self.image_key][self.image_index])
+
+class PunchParticle(ImageParticle):
+    def __init__(self, game, x, y, **kwargs):
+        key = "punch"
+        index = 0
+        super().__init__(game, x, y, 0, 0, key, index, **kwargs)
+    
+    def update_sprite(self):
+        lifetime_remaining = self.get_lifetime_remaining()
+        if lifetime_remaining > 0.5:
+            self.image_index = 0
+        elif lifetime_remaining > 0.375:
+            self.image_index = 1
+        elif lifetime_remaining > 0.25:
+            self.image_index = 2
+        elif lifetime_remaining > 0.125:
+            self.image_index = 3
+        else:
+            self.image_index = 4
+
+class RazorLeafParticle(ImageParticle):
+    def __init__(self, game, x, y, mirror_mode = False, **kwargs):
+        key = "razor leaf transparent"
+        index = 0
+        self.mirror_mode = mirror_mode
+        super().__init__(game, x, y, 0, 0, key, index, **kwargs)
+    
+    def update_sprite(self):
+        self.image_index = ((self.lived_lifetime + (4 if self.mirror_mode else 0))//4) % 8
+
+    def update_position(self, lifetime_remaining):
+        angle = np.radians((540 * (1-lifetime_remaining)) % 360)
+        speed = 3 + 6 * (1 + (1-lifetime_remaining))
+        self.x += (np.cos(angle) * speed) * (-1 if self.mirror_mode else 1) * 1.5
+        self.y += np.sin(angle) * (2 * speed / 3)
 
 
 class ParticleSpawner:
@@ -683,27 +773,14 @@ def bolt_animation(game, x, y, **kwargs):
 
 
 def punch_animation(game, x, y, **kwargs):
-    lifetime = 16
+    lifetime = 12
     recursion_count = 1
     if lifetime in kwargs:
         lifetime = kwargs["lifetime"]
     if "recursion_count" in kwargs:
         recursion_count = kwargs["recursion_count"]
     lifetime=randomize_if_tuple(lifetime)
-    size = 12
-    negative_rotation = random.choice([-1, 1])
-    highest_lifetime = lifetime[1] if type(lifetime) is tuple else lifetime
-    game.particle_spawner.add_particles(CircleParticle(
-        game,
-        x, y,
-        0, 0, size,
-        lambda a, b: 0 if b > 0.5 else -size/15,
-        158, 63, 22,
-        lambda a, b: 255 if b > 0.5 else max(25,int(255*b*2)),
-        lifetime=lifetime,
-        leave_trail_every_nth_frame=1,
-        render_on_top=True
-    ))
+    game.particle_spawner.add_particles(PunchParticle(game, x, y, lifetime=lifetime, render_on_top=True))
     game.particle_spawner.add_particles(CircleParticle(
         game,
         x, y,
@@ -711,6 +788,28 @@ def punch_animation(game, x, y, **kwargs):
         0, 0, 0, 0,
         lifetime=max(1, lifetime//2), 
         death_function=(small_impact_animation, 1)))
+
+def razor_leaf_animation(game, x, y, **kwargs):
+    leaf_image_size = 40
+    offset = leaf_image_size // 2
+    x -= offset
+    # the leaves end up a somewhat below where they start
+    y -= (offset+10)
+    lifetime = 20
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    lifetime=randomize_if_tuple(lifetime)
+    game.particle_spawner.add_particles(RazorLeafParticle(game, x, y, False,
+                                                          lifetime=lifetime,
+                                                          render_on_top=True,
+                                                          death_function=(impact_animation, 1)))
+    game.particle_spawner.add_particles(RazorLeafParticle(game, x, y, True,
+                                                          lifetime=lifetime,
+                                                          render_on_top=True,
+                                                          death_function=(impact_animation, 1)))
 
 def punch_spawner_animation(game, x, y, **kwargs):
     lifetime = (1, 12)

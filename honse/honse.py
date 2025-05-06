@@ -72,10 +72,27 @@ class HonseGame:
         self.music = music
         self.width_ratio = self.SCREEN_WIDTH / 1920
         self.sound_events = []
+        self.particle_images = {}
+        self.particle_surfaces = {}
         self.load_map()
         self.create_sounds()
         self.play_music()
         self.font_setup()
+        self.load_image_particles()
+        
+    def load_image_particles(self):
+        path = "vfx"
+        self.particle_images["punch"] = [Image.open(os.path.join(path, "punch.png"))]
+        self.particle_surfaces["punch"] = [honse_data.image_to_surface(self.particle_images["punch"][0])]
+        for opacity in [80, 60, 40, 20]:
+            self.particle_images["punch"].append(honse_data.alpha_change(self.particle_images["punch"][0].copy(), opacity))
+            self.particle_surfaces["punch"].append(honse_data.image_to_surface(self.particle_images["punch"][-1]))
+        razor_leaf = Image.open(os.path.join(path, "razor leaf.png"))
+        transparent_razor_leaf = honse_data.alpha_change(razor_leaf.copy(), 75)
+        self.particle_images["razor leaf"] = honse_data.from_sprite_sheet(razor_leaf, 40)
+        self.particle_surfaces["razor leaf"] = [honse_data.image_to_surface(item) for item in self.particle_images["razor leaf"]]
+        self.particle_images["razor leaf transparent"] = honse_data.from_sprite_sheet(transparent_razor_leaf, 40)
+        self.particle_surfaces["razor leaf transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["razor leaf transparent"]]
 
     def times_width_ratio(self, value):
         # is it faster to do it this way? idk!!!!
@@ -132,7 +149,7 @@ class HonseGame:
     def play_sound(self, sound, repeat=0):
         if self.pygame_mode:
             self.sounds[sound][1].play(repeat)
-        elif self.video_mode:
+        if self.video_mode:
             self.sound_events.append(
                 (self.frame_count, sound, repeat)
             )
@@ -225,10 +242,7 @@ class HonseGame:
             channels=2
             ).export(tmpfile.name, format="wav")
             self.audio_tempfile = tmpfile.name
-
         
-
-            
     def first_draw(self):
         if self.video_mode:
             image = Image.new(
@@ -689,7 +703,7 @@ class HonseGame:
 
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
-game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", False, True)
+game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, True)
 game.add_character(
     "Saurbot",
     0,
