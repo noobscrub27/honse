@@ -700,83 +700,80 @@ class HonseGame:
                 
 
 
-
+test_pokemon = {
+    "Saurbot": {
+        "stats": {"HP": 77, "ATK": 5, "DEF": 107, "SPA": 5, "SPD": 104, "SPE": 20},
+        "types": [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]],
+        "file": "bob.png"},
+    "Saur": {
+        "stats": {"HP": 114, "ATK": 44, "DEF": 104, "SPA": 95, "SPD": 138, "SPE": 55},
+        "types": [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Poison"]],
+        "file": "saur.png"},
+    "Apollo": {
+        "stats": {"HP": 88, "ATK": 119, "DEF": 103, "SPA": 117, "SPD": 101, "SPE": 94},
+        "types": [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Ghost"]],
+        "file": "apollo.png"},
+    "Dragonite": {
+        "stats": {"HP": 91, "ATK": 134, "DEF": 95, "SPA": 100, "SPD": 100, "SPE": 80},
+        "types": [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
+        "file": "dragonite.png"},
+    "Alakazam": {
+        "stats": {"HP": 55, "ATK": 50, "DEF": 45, "SPA": 135, "SPD": 95, "SPE": 120},
+        "types": [honse_pokemon.pokemon_types["Psychic"]],
+        "file": "alakazam.png"},
+    "Warwolf": {
+        "stats": {"HP": 106, "ATK": 116, "DEF": 69, "SPA": 46, "SPD": 87, "SPE": 96},
+        "types": [honse_pokemon.pokemon_types["Ice"], honse_pokemon.pokemon_types["Dark"]],
+        "file": "warwolf.png"},
+    "Sudowoodo": {
+        "stats": {"HP": 80, "ATK": 115, "DEF": 125, "SPA": 30, "SPD": 65, "SPE": 55},
+        "types": [honse_pokemon.pokemon_types["Rock"]],
+        "file": "sudowoodo.png"},
+    "Croconaw": {
+        "stats": {"HP": 75, "ATK": 90, "DEF": 85, "SPA": 59, "SPD": 68, "SPE": 68},
+        "types": [honse_pokemon.pokemon_types["Water"]],
+        "file": "croconaw.png"},
+    "Drowzee": {
+        "stats": {"HP": 67, "ATK": 79, "DEF": 61, "SPA": 64, "SPD": 94, "SPE": 42},
+        "types": [honse_pokemon.pokemon_types["Psychic"]],
+        "file": "drowzee.png"},
+    "Luxio": {
+        "stats": {"HP": 70, "ATK": 105, "DEF": 60, "SPA": 85, "SPD": 60, "SPE": 70},
+        "types": [honse_pokemon.pokemon_types["Electric"], honse_pokemon.pokemon_types["Dark"]],
+        "file": "luxio.png"},
+    "Riolu": {
+        "stats": {"HP": 50, "ATK": 75, "DEF": 45, "SPA": 45, "SPD": 45, "SPE": 70},
+        "types": [honse_pokemon.pokemon_types["Fighting"]],
+        "file": "riolu.png"},
+    "Manaphy": {
+        "stats": {"HP": 100, "ATK": 100, "DEF": 100, "SPA": 100, "SPD": 100, "SPE": 100},
+        "types": [honse_pokemon.pokemon_types["Water"]],
+        "file": "manaphy.png"},
+    "Steelix": {
+        "stats": {"HP": 75, "ATK": 95, "DEF": 200, "SPA": 50, "SPD": 75, "SPE": 25},
+        "types": [honse_pokemon.pokemon_types["Steel"], honse_pokemon.pokemon_types["Ground"]],
+        "file": "steelix.png"},
+    "Camerupt": {
+        "stats": {"HP": 100, "ATK": 110, "DEF": 75, "SPA": 125, "SPD": 90, "SPE": 40},
+        "types": [honse_pokemon.pokemon_types["Fire"], honse_pokemon.pokemon_types["Ground"]],
+        "file": "camerupt.png"},
+    }
+combatants = random.sample(list(test_pokemon.keys()), 8)
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
-game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, True)
-game.add_character(
-    "Saurbot",
-    0,
-    100,
-    {"HP": 77, "ATK": 5, "DEF": 107, "SPA": 5, "SPD": 104, "SPE": 20},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]],
-    "bob.png",
-)
-game.add_character(
-    "Saur",
-    0,
-    100,
-    {"HP": 114, "ATK": 44, "DEF": 104, "SPA": 95, "SPD": 138, "SPE": 55},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Poison"]],
-    "saur.png",
-)
-game.add_character(
-    "Apollo",
-    0,
-    100,
-    {"HP": 88, "ATK": 119, "DEF": 103, "SPA": 117, "SPD": 101, "SPE": 94},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Ghost"]],
-    "apollo.png",
-)
-game.add_character(
-    "Dragonite",
-    0,
-    100,
-    {"HP": 91, "ATK": 134, "DEF": 95, "SPA": 100, "SPD": 100, "SPE": 80},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
-    "dragonite.png",
-)
 
-game.add_character(
-    "Alakazam",
-    1,
-    100,
-    {"HP": 55, "ATK": 50, "DEF": 45, "SPA": 135, "SPD": 95, "SPE": 120},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Psychic"]],
-    "alakazam.png",
-)
-game.add_character(
-    "Warwolf",
-    1,
-    100,
-    {"HP": 106, "ATK": 116, "DEF": 69, "SPA": 46, "SPD": 87, "SPE": 96},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Ice"], honse_pokemon.pokemon_types["Dark"]],
-    "warwolf.png",
-)
-game.add_character(
-    "Sudowoodo",
-    1,
-    100,
-    {"HP": 80, "ATK": 115, "DEF": 125, "SPA": 30, "SPD": 65, "SPE": 55},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Rock"]],
-    "sudowoodo.png",
-)
-game.add_character(
-    "Croconaw",
-    1,
-    100,
-    {"HP": 75, "ATK": 90, "DEF": 85, "SPA": 59, "SPD": 68, "SPE": 68},
-    random.sample(list(honse_pokemon.moves.values()), 4),
-    [honse_pokemon.pokemon_types["Water"]],
-    "croconaw.png",
-)
+game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, True)
+for i, character in enumerate(combatants):
+    team = 0 if i < 4 else 1
+    game.add_character(
+        character,
+        team,
+        100,
+        test_pokemon[character]["stats"],
+        random.sample(list(honse_pokemon.moves.values()), 4),
+        test_pokemon[character]["types"],
+        test_pokemon[character]["file"]
+        )
 cProfile.run("game.main_loop()", sort="cumtime", filename="res")
 
 

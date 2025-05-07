@@ -512,7 +512,7 @@ class BasicAttack(Move):
         # knockback scaling is equal to 1+((knockback_scaling * damage)/current_hp)
         # damage cannot exceed current HP
         # this is also used for hitstop
-        knockback_modification = 1 + ((self.knockback_scaling * damage) / current_hp)
+        knockback_modification = 1 + ((self.knockback_scaling * damage) / max(1,current_hp))
         return knockback_modification
 
     def on_use(self, user, **kwargs):
