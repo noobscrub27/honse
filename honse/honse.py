@@ -32,7 +32,7 @@ class HonseGame:
         self,
         json_path,
         background,
-        music,
+        music_folder,
         pygame_mode,
         video_mode,
         width=1920,
@@ -69,7 +69,9 @@ class HonseGame:
         self.current_frame_draw = None
         self.video_out_path = "output.mp4"
         self.draw_every_nth_frame = 1
-        self.music = music
+        music_folder = os.path.join("bgm", music_folder)
+        files_in_music_folder = os.listdir(music_folder)
+        self.music = os.path.join(music_folder, random.choice(files_in_music_folder))
         self.width_ratio = self.SCREEN_WIDTH / 1920
         self.sound_events = []
         self.particle_images = {}
@@ -93,6 +95,9 @@ class HonseGame:
         self.particle_surfaces["razor leaf"] = [honse_data.image_to_surface(item) for item in self.particle_images["razor leaf"]]
         self.particle_images["razor leaf transparent"] = honse_data.from_sprite_sheet(transparent_razor_leaf, 40)
         self.particle_surfaces["razor leaf transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["razor leaf transparent"]]
+        thunderbolt = Image.open(os.path.join(path, "thunderbolt.png"))
+        self.particle_images["thunderbolt"] = honse_data.from_sprite_sheet(thunderbolt, 60)
+        self.particle_surfaces["thunderbolt"] = [honse_data.image_to_surface(item) for item in self.particle_images["thunderbolt"]]
 
     def times_width_ratio(self, value):
         # is it faster to do it this way? idk!!!!
@@ -126,7 +131,7 @@ class HonseGame:
 
     def play_music(self):
         if self.pygame_mode:
-            pygame.mixer.music.load(os.path.join("music", self.music))
+            pygame.mixer.music.load(self.music)
             pygame.mixer.music.play(0)
         if self.video_mode:
             pass
@@ -192,7 +197,7 @@ class HonseGame:
 
         
         bg_seg = (AudioSegment
-                .from_file(os.path.join("music", self.music))
+                .from_file(self.music)
                 .set_frame_rate(SR)
                 .set_channels(2)
                 .apply_gain(HEADROOM_DB))
@@ -762,7 +767,7 @@ combatants = random.sample(list(test_pokemon.keys()), 8)
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
 
-game = HonseGame("map02.json", "map02.png", "hgss kanto wild theme.mp3", True, True)
+game = HonseGame("map02.json", "map02.png", "wild", True, True)
 for i, character in enumerate(combatants):
     team = 0 if i < 4 else 1
     game.add_character(

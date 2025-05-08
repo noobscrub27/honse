@@ -296,6 +296,18 @@ class RazorLeafParticle(ImageParticle):
         self.x += (np.cos(angle) * speed) * (-1 if self.mirror_mode else 1) * 1.5
         self.y += np.sin(angle) * (2 * speed / 3)
 
+class BoltParticle(ImageParticle):
+    def __init__(self, game, x, y, **kwargs):
+        key = "thunderbolt"
+        index = 0
+        x -= 30
+        y -= 88
+        super().__init__(game, x, y, 0, 0, key, index, **kwargs)
+
+    def update_sprite(self):
+        if self.lived_lifetime > 0 and self.lived_lifetime % 3 == 0 and self.image_index < len(self.game.particle_images[self.image_key])-1:
+            self.image_index += 1
+
 
 class ParticleSpawner:
     def __init__(self, game):
@@ -732,6 +744,17 @@ def ice_animation(game, x, y, **kwargs):
         game.particle_spawner.add_particles(particle)
 
 def bolt_animation(game, x, y, **kwargs):
+    lifetime = 30
+    recursion_count = 1
+    if lifetime in kwargs:
+        lifetime = kwargs["lifetime"]
+    lifetime = randomize_if_tuple(lifetime)
+    if "recursion_count" in kwargs:
+        recursion_count = kwargs["recursion_count"]
+    game.particle_spawner.add_particles(BoltParticle(
+        game, x, y, render_on_top=True, lifetime=lifetime))
+
+def old_bolt_animation(game, x, y, **kwargs):
     lifetime = 24
     recursion_count = 3
     if lifetime in kwargs:
