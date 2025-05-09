@@ -26,6 +26,26 @@ from pydub import AudioSegment
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+# Check https://habr.com/ru/articles/545850/
+def to_numpy(im):
+    im.load()
+    # unpack data
+    e = Image._getencoder(im.mode, 'raw', im.mode)
+    e.setimage(im.im)
+
+    # NumPy buffer for the result
+    shape, typestr = Image._conv_type_shape(im)
+    data = np.empty(shape, dtype=np.dtype(typestr))
+    mem = data.data.cast('B', (data.data.nbytes,))
+
+    bufsize, s, offset = 65536, 0, 0
+    while not s:
+        l, s, d = e.encode(bufsize)
+        mem[offset:offset + len(d)] = d
+        offset += len(d)
+    if s < 0:
+        raise RuntimeError("encoder error %d in tobytes" % s)
+    return data
 
 class HonseGame:
     def __init__(
@@ -162,9 +182,11 @@ class HonseGame:
     def save_into_ffmpeg(self, frame):
         # frame.show()
         # exit()
-        frame_data = frame.tobytes()
+        frame_array = to_numpy(frame)
+        frame_bytes = memoryview(frame_array)
+
         try:
-            self.video_writer.stdin.write(frame_data)
+            self.video_writer.stdin.write(frame_bytes)
         except BrokenPipeError:
             print("Broken pipe error: FFmpeg process may have terminated.")
         except Exception as e:
