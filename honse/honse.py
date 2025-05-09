@@ -767,7 +767,7 @@ combatants = random.sample(list(test_pokemon.keys()), 8)
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
 
-game = HonseGame("map02.json", "map02.png", "wild", True, True)
+game = HonseGame("map02.json", "noise.png", "wild", False, True)
 for i, character in enumerate(combatants):
     team = 0 if i < 4 else 1
     game.add_character(
