@@ -880,3 +880,11 @@ p = pstats.Stats("res")
 p.strip_dirs()
 p.sort_stats("cumulative").print_stats(40)
 pygame.quit()
+
+
+'''
+things to look into
+a logging system that logs every stat and damage calculation.
+ive seen some weird stuff like a saurbot water gun doing insane amounts of damage to saur, which shouldnt happen
+
+'''

@@ -380,10 +380,13 @@ class LeechSeedEffect(Effect):
         self.game.display_message(f"{self.inflicted_upon.name} was seeded!", self.text_size, [0, 0, 0])
 
     def end_of_turn(self):
-        self.damage_countdown -= 1
-        if self.damage_countdown <= 0 and not self.inflicted_upon.is_fainted():
-            self.activate(EffectTypes.END_OF_TURN)
-            self.damage_countdown = self.max_damage_countdown
+        if self.inflicted_by.is_fainted():
+            self.lifetime = 0
+        else:
+            self.damage_countdown -= 1
+            if self.damage_countdown <= 0 and not self.inflicted_upon.is_fainted():
+                self.activate(EffectTypes.END_OF_TURN)
+                self.damage_countdown = self.max_damage_countdown
 
     def activate(self, effect, **kwargs):
         if effect == EffectTypes.END_OF_TURN:
@@ -548,7 +551,7 @@ class ParalysisEffect(Effect):
         return 900
 
     def infliction(self):
-        if (pokemon_types["Electric"] in self.inflicted_upon.types) or (pokemon_types in self.inflicted_upon.types and type(self.source) == Move and self.source.type == pokemon_types["Electric"]):
+        if (pokemon_types["Electric"] in self.inflicted_upon.types) or (pokemon_types["Ground"] in self.inflicted_upon.types and type(self.source) == Move and self.source.type == pokemon_types["Electric"]):
             success = False
         else:
             success = self.inflicted_upon.inflict_status(self)
