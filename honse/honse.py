@@ -497,6 +497,9 @@ class HonseGame:
         if self.video_mode:
             img, size = self.get_text_image(text, font_key, r, g, b, a)
             self.current_frame_image.paste(img, (int(x), int(y)), img)
+        else:
+            size = (text_surface.get_width() * 1920 / self.SCREEN_WIDTH,
+             text_surface.get_height() * 1080 / self.SCREEN_HEIGHT)
         return size
 
     def check_game_end(self):

@@ -249,7 +249,7 @@ pokemon_types["Bug"].default_animation = honse_particles.large_impact_animation
 pokemon_types["Ghost"].default_animation = honse_particles.large_impact_animation
 pokemon_types["Steel"].default_animation = honse_particles.large_impact_animation
 pokemon_types["Fire"].default_animation = honse_particles.flame_animation
-pokemon_types["Water"].default_animation = honse_particles.large_impact_animation
+pokemon_types["Water"].default_animation = honse_particles.splash_animation
 pokemon_types["Grass"].default_animation = honse_particles.razor_leaf_animation
 pokemon_types["Electric"].default_animation = honse_particles.bolt_animation
 pokemon_types["Psychic"].default_animation = honse_particles.psychic_animation
@@ -270,7 +270,7 @@ pokemon_types["Bug"].sound = "Tackle"
 pokemon_types["Ghost"].sound = "Tackle"
 pokemon_types["Steel"].sound = "Tackle"
 pokemon_types["Fire"].sound = "Ember"
-pokemon_types["Water"].sound = "Tackle"
+pokemon_types["Water"].sound = "Water Gun"
 pokemon_types["Grass"].sound = "Razor Leaf"
 pokemon_types["Electric"].sound = "Zap Cannon"
 pokemon_types["Psychic"].sound = "Confusion"
@@ -300,7 +300,8 @@ def other_stat_formula(base, level, ivs, evs, nature):
 class Effect:
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
         self.text_size = 16
-        self.effect_types = []
+        if not hasattr(self, "effect_types"):
+            self.effect_types = []
         if inflicted_by is not None:
             self.game = inflicted_by.game
         else:
@@ -314,6 +315,10 @@ class Effect:
         self.max_lifetime = self.lifetime
         if "status_icon" in kwargs:
             self.status_icon = kwargs["status_icon"]
+        if "source" in kwargs:
+            self.source = kwargs["source"]
+        else:
+            self.source = None
         if "get_effect_value" in kwargs and kwargs["get_effect_value"]:
             self.success = False
         else:
@@ -354,11 +359,11 @@ class Effect:
 
 class LeechSeedEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
-        self.damage = 1/32 # decimal representing portion of max hp
+        self.damage = 1/16 # decimal representing portion of max hp
         self.damage_countdown = 300
         self.max_damage_countdown = 300
-        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="seeded", **kwargs)
         self.effect_types = [EffectTypes.END_OF_TURN]
+        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="seeded", **kwargs)
 
     def get_effect_value(self):
         return 900
@@ -390,15 +395,16 @@ class LeechSeedEffect(Effect):
 
 class BurnEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
-        self.damage = 1/32 # decimal representing portion of max hp
+        self.damage = 1/16 # decimal representing portion of max hp
         self.damage_countdown = 300
         self.max_damage_countdown = 300
-        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="burn", **kwargs)
         self.effect_types = [
             EffectTypes.END_OF_TURN,
             EffectTypes.ATTACK_MODIFICATION,
             EffectTypes.NON_VOLATILE
         ]
+        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="burn", **kwargs)
+        
     def get_effect_value(self):
         return 900
 
@@ -431,15 +437,16 @@ class BurnEffect(Effect):
 
 class FreezeEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
-        self.damage = 1/32 # decimal representing portion of max hp
+        self.damage = 1/16 # decimal representing portion of max hp
         self.damage_countdown = 300
         self.max_damage_countdown = 300
-        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="freeze", **kwargs)
         self.effect_types = [
             EffectTypes.END_OF_TURN,
             EffectTypes.SPECIAL_ATTACK_MODIFICATION,
             EffectTypes.NON_VOLATILE
         ]
+        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="freeze", **kwargs)
+        
     def get_effect_value(self):
         return 900
 
@@ -473,11 +480,12 @@ class FreezeEffect(Effect):
 class ConfusionEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
         self.confusion_chance = 1/3
-        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="confused", **kwargs)
         self.effect_types = [
             EffectTypes.BEFORE_ATTACK,
             EffectTypes.NON_VOLATILE
         ]
+        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="confused", **kwargs)
+        
 
     def get_effect_value(self):
         return 900
@@ -526,20 +534,21 @@ class MustRechargeEffect(Effect):
 
 class ParalysisEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
-        self.damage = 1/32 # decimal representing portion of max hp
-        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="paralysis", **kwargs)
+        self.damage = 1/16 # decimal representing portion of max hp
         self.effect_types = [
             EffectTypes.AFTER_ATTACK,
             EffectTypes.SPEED_MODIFICATION,
             EffectTypes.MOVE_SPEED_MODIFICATION,
             EffectTypes.NON_VOLATILE
         ]
+        super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="paralysis", **kwargs)
+        
 
     def get_effect_value(self):
         return 900
 
     def infliction(self):
-        if pokemon_types["Electric"] in self.inflicted_upon.types:
+        if (pokemon_types["Electric"] in self.inflicted_upon.types) or (pokemon_types in self.inflicted_upon.types and type(self.source) == Move and self.source.type == pokemon_types["Electric"]):
             success = False
         else:
             success = self.inflicted_upon.inflict_status(self)
@@ -569,10 +578,11 @@ class StatStageEffect(Effect):
         else:
             self.status_icon = "stat boost"
         self.stat = kwargs["stat"]
-        super().__init__(inflicted_by, inflicted_upon, **kwargs)
         self.effect_types = [
             STAT_EFFECTS[self.stat]["stage"]
             ]
+        super().__init__(inflicted_by, inflicted_upon, **kwargs)
+        
 
     def get_effect_value(self):
         modifier = stage_to_modifier(self.stage)
@@ -608,10 +618,11 @@ class MoveSpeedModificationEffect(Effect):
             self.status_icon = "stat drop"
         else:
             self.status_icon = "stat boost"
-        super().__init__(inflicted_by, inflicted_upon, **kwargs)
         self.effect_types = [
             EffectTypes.MOVE_SPEED_MODIFICATION
             ]
+        super().__init__(inflicted_by, inflicted_upon, **kwargs)
+        
 
     def get_effect_value(self):
         if self.modifier < 1:
@@ -620,7 +631,6 @@ class MoveSpeedModificationEffect(Effect):
             return (self.modifier/2) * self.max_lifetime
 
     def display_inflicted_message(self):
-        print(self.modifier)
         if self.modifier < 1:
             boost_descriptor = "slowed"
         else:
@@ -639,10 +649,11 @@ class CooldownReductionEffect(Effect):
             self.reduction_amount = kwargs["reduction_amount"]
         else:
             self.reduction_amount = kwargs["reduction_amount"]
-        super().__init__(inflicted_by, inflicted_upon, lifetime=1, **kwargs)
         self.effect_types = [
             EffectTypes.COOLDOWN_REDUCTION
         ]
+        super().__init__(inflicted_by, inflicted_upon, lifetime=1, **kwargs)
+        
     def get_effect_value(self):
         return -1 * self.reduction_amount
 
@@ -659,11 +670,11 @@ class RolloutEffect(Effect):
         else:
             self.affected_move = ""
         self.modifier = 2
-        super().__init__(inflicted_by, inflicted_upon, status_icon="locked move", **kwargs)
         self.effect_types = [
             EffectTypes.ATTACKER_BASE_POWER_MODIFICATION,
             EffectTypes.MOVE_LOCK
         ]
+        super().__init__(inflicted_by, inflicted_upon, status_icon="locked move", **kwargs)
 
     def get_effect_value(self):
         return -180
@@ -1009,7 +1020,6 @@ class Character:
                                 return effect.activate(EffectTypes.AFTER_ATTACK)
                         if not success:
                             self.game.display_message("But it failed!", self.text_size, [0,0,0])
-                            honse_data.print_debug(f"user: {self.team}-{self.name}, target: {target.team}-{target.name}: {move.name} failed")
                         else:
                             self.battle_stats["moves used"] += 1
                     self.on_cooldown(i)
@@ -1314,9 +1324,9 @@ class Move:
     def apply_move_effects(self, user, target):
         for effect in self.move_effects:
             if effect["affects user"]:
-                effect["effect"](user, user, **effect["kwargs"])
+                effect["effect"](user, user, **effect["kwargs"], source=self)
             else:
-                effect["effect"](user, target, **effect["kwargs"])
+                effect["effect"](user, target, **effect["kwargs"], source=self)
 
     def on_use(self, user: Character, **kwargs):
         if self.target == MoveTarget.NORMAL:
@@ -1418,9 +1428,9 @@ class BasicAttack(Move):
         for i, chance in enumerate(chances):
             if roll <= chance:
                 if effects[i]["affects user"]:
-                    effects[i]["effect"](user, user, **effects[i]["kwargs"])
+                    effects[i]["effect"](user, user, **effects[i]["kwargs"], source=self)
                 else:
-                    effects[i]["effect"](user, target, **effects[i]["kwargs"])
+                    effects[i]["effect"](user, target, **effects[i]["kwargs"], source=self)
                 break
 
     def apply_power_modifiers(self, user, target):
@@ -1439,8 +1449,7 @@ class BasicAttack(Move):
             target = kwargs["target"]
         elif self.target == MoveTarget.USER:
             target = user
-        if target.same_team(user):
-            return False
+        self.apply_power_modifiers(user, target)
         # damage calc
         damage, crit = damage_formula(self, user, target)
         # display messages and vfx

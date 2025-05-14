@@ -22,12 +22,6 @@ TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
 BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
 
-DEBUG = True
-
-def print_debug(message):
-    if DEBUG:
-        print(message)
-
 # equates to 24 hours for when i want things to last indefinitely
 A_LOT_OF_FRAMES = 5184000
 
@@ -159,20 +153,19 @@ class UIElement:
             self.status_queue.append([status])
 
     def unqueue_status(self, status):
-        print(status, self.status_queue)
         for i, status_group in enumerate(self.status_queue):
             if status in status_group:
                 self.status_queue[i].remove(status)
                 if len(self.status_queue[i]) == 0:
                     self.status_queue.pop(i)
-        print(status, self.status_queue)
+
     def draw_status_icons(self):
         volatile_status_icon = None
         non_volatile_status_icon = None
         if len(self.status_queue):
             volatile_status_icon = self.status_queue[0][0].status_icon
         if self.character.has_non_volatile_status:
-            non_volatile_status_icon = self.character.get_non_volatile_status.status_icon
+            non_volatile_status_icon = self.character.get_non_volatile_status().status_icon
         if non_volatile_status_icon is None and volatile_status_icon is None:
             return
         elif volatile_status_icon is not None and non_volatile_status_icon is not None:
