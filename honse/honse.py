@@ -96,14 +96,20 @@ class HonseGame:
         self.sound_events = []
         self.particle_images = {}
         self.particle_surfaces = {}
+        self.status_icon_images = {}
+        self.status_icon_surfaces = {}
+        # this is stored in the game bc i want all the statuses to update at the same time
+        # i think it will look nice :)
+        self.update_status_icons_in_n_frames = honse_data.STATUS_ICON_BLINK_LENGTH
         self.load_map()
         self.create_sounds()
         self.play_music()
         self.font_setup()
+        self.load_status_icons()
         self.load_image_particles()
         
     def load_image_particles(self):
-        path = "vfx"
+        path = os.path.join("vfx", "particles")
         self.particle_images["punch"] = [Image.open(os.path.join(path, "punch.png"))]
         self.particle_surfaces["punch"] = [honse_data.image_to_surface(self.particle_images["punch"][0])]
         for opacity in [80, 60, 40, 20]:
@@ -119,6 +125,15 @@ class HonseGame:
         self.particle_images["thunderbolt"] = honse_data.from_sprite_sheet(thunderbolt, 60)
         self.particle_surfaces["thunderbolt"] = [honse_data.image_to_surface(item) for item in self.particle_images["thunderbolt"]]
 
+    def load_status_icons(self):
+        path = os.path.join("vfx", "status icons")
+        files = os.listdir(path)
+        for file in files:
+            no_file_extension = file.removesuffix(".png")
+            file_path = os.path.join(path, file)
+            self.status_icon_images[no_file_extension] = Image.open(file_path)
+            self.status_icon_surfaces[no_file_extension] = honse_data.image_to_surface(self.status_icon_images[no_file_extension])
+
     def times_width_ratio(self, value):
         # is it faster to do it this way? idk!!!!
         # does it matter? i also dont know!!!!!!
@@ -130,6 +145,10 @@ class HonseGame:
             16: [
                 pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(16)),
                 ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(16)),
+            ],
+            20: [
+                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(20)),
+                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(20)),
             ],
             24: [
                 pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(24)),
@@ -145,6 +164,8 @@ class HonseGame:
             ],
         }
         for value in self.message_fonts.values():
+            # im like 90% sure that ascent + descent is the same as font size
+            # but just in case it doesnt hurt to do it this way
             value.append(value[0].get_ascent() - value[0].get_descent())
         self.message_y_offset = 5
         self.message_x_offset = 10
@@ -205,6 +226,7 @@ class HonseGame:
         
         def seg_to_float(seg: AudioSegment) -> np.ndarray:
             seg = seg.fade_in(5).fade_out(5)  # small 5ms fades to reduce clicks
+                                              # bounce.mp3 >:)
             pcm = np.array(seg.get_array_of_samples(), dtype=np.float32)
             pcm = pcm.reshape(-1, seg.channels) / 32_768.0
             if seg.channels == 1:
@@ -329,6 +351,7 @@ class HonseGame:
     def draw_circle(self, x, y, radius, rgba):
         x = self.times_width_ratio(x)
         y = self.times_width_ratio(y)
+        size = (radius*2, radius*2)
         radius = self.times_width_ratio(radius)
         if self.pygame_mode:
             color = pygame.Color(rgba[0], rgba[1], rgba[2], rgba[3])
@@ -340,24 +363,23 @@ class HonseGame:
                 self.screen.blit(circle_surface, (x - radius, y - radius))
             else:
                 pygame.draw.circle(self.screen, color, (x, y), int(radius))
+            return 
         if self.video_mode: 
             if rgba[3] == 255:
                 self.current_frame_draw.ellipse(
                     (x - radius, y - radius, x + radius, y + radius), fill=rgba
                 )
-                return
+                return size
             # Doing alpha-composite magic here
             # - lina
             min_x = max(0, int(x - radius))
             min_y = max(0, int(y - radius))
             max_x = min(self.SCREEN_WIDTH, int(x + radius))
             max_y = min(self.SCREEN_HEIGHT, int(y + radius))
-
             box_width = max_x - min_x
             box_height = max_y - min_y
             if box_width <= 0 or box_height <= 0:
-                return
-
+                return size
             overlay = Image.new("RGBA", (box_width, box_height), (0, 0, 0, 0))
             draw = ImageDraw.Draw(overlay, "RGBA")
             draw.ellipse((0, 0, box_width - 1, box_height - 1), fill=rgba)
@@ -365,10 +387,14 @@ class HonseGame:
             region = self.current_frame_image.crop((min_x, min_y, max_x, max_y))
             blended = Image.alpha_composite(region, overlay)
             self.current_frame_image.paste(blended, (min_x, min_y))
+            return size
 
     # https://stackoverflow.com/questions/34747946/rotating-a-square-in-pil
     # answer by Sparkler
+    # im not sure but i think this code is no longer used since lina fixed this function
+    # but it was used at one point so im keeping the citation for now
     def draw_rectangle(self, x_pos, y_pos, width, height, rotation, rgba):
+        size = (width, height)
         x_pos = self.times_width_ratio(x_pos)
         y_pos = self.times_width_ratio(y_pos)
         width = self.times_width_ratio(width)
@@ -414,9 +440,10 @@ class HonseGame:
                 
             if rgba[3] == 255:
                 self.current_frame_draw.polygon(verticies, fill=rgba)
-                return
+                return size
             # omg doing alpha-composite magic here too
             # - lina
+            # ty!!! :)
             xs, ys = zip(*verticies)
             min_x, max_x = int(min(xs)), int(max(xs))
             min_y, max_y = int(min(ys)), int(max(ys))
@@ -425,7 +452,7 @@ class HonseGame:
             max_x = min(self.SCREEN_WIDTH, max_x)
             max_y = min(self.SCREEN_HEIGHT, max_y)
             if max_x <= min_x or max_y <= min_y:
-                return
+                return size
 
             box_width = max_x - min_x
             box_height = max_y - min_y
@@ -438,13 +465,14 @@ class HonseGame:
             region = self.current_frame_image.crop((min_x, min_y, max_x, max_y))
             blended = Image.alpha_composite(region, overlay)
             self.current_frame_image.paste(blended, (min_x, min_y))
-
+        return size
 
     def draw_image(self, x, y, pygame_surface, pil_image):
         if self.pygame_mode:
             self.screen.blit(pygame_surface, (x, y))
         if self.video_mode:
             self.current_frame_image.paste(pil_image, (int(x), int(y)), pil_image)
+        return pil_image.size
 
     @functools.lru_cache(maxsize=512)
     def get_text_image(self, text, font_key, r, g, b, a):
@@ -456,7 +484,7 @@ class HonseGame:
         img = Image.new("RGBA", (width, height))
         draw = ImageDraw.Draw(img)
         draw.text((-size[0], -size[1]), text, (r, g, b, a), font=font)
-        return img
+        return img, (width, height)
 
     def draw_text(self, x, y, text, font_key, r, g, b, a):
         x = self.times_width_ratio(x)
@@ -467,8 +495,9 @@ class HonseGame:
             text_surface.set_alpha(a)
             self.screen.blit(text_surface, (x, y))
         if self.video_mode:
-            img = self.get_text_image(text, font_key, r, g, b, a)
+            img, size = self.get_text_image(text, font_key, r, g, b, a)
             self.current_frame_image.paste(img, (int(x), int(y)), img)
+        return size
 
     def check_game_end(self):
         team1_alive = len(
@@ -614,14 +643,23 @@ class HonseGame:
                 # fill the screen with a color to wipe away anything from last frame
                 self.draw_background()
 
+                # delete particles
                 self.particle_spawner.delete_particles()
+                # draw particles that display on bottom
                 self.particle_spawner.emit()
                 for spawner in self.temporary_particle_spawners:
                     spawner.delete_particles()
                     spawner.emit()
 
+                change_status_icon_this_frame = False
+                self.update_status_icons_in_n_frames -= 1
+                if self.update_status_icons_in_n_frames <= 0:
+                    self.update_status_icons_in_n_frames = honse_data.STATUS_ICON_BLINK_LENGTH
+                    change_status_icon_this_frame = True
                 # update ui
                 for character in self.characters:
+                    if change_status_icon_this_frame:
+                        character.ui_element.next_status_icon()
                     character.ui_element.display()
 
                 # sort by speed
@@ -631,6 +669,7 @@ class HonseGame:
                 tangible_characters = sorted(
                     tangible_characters, key=lambda x: x.get_speed(), reverse=True
                 )
+
                 collisions = []
                 for character in tangible_characters:
                     for other_character in tangible_characters:
@@ -643,13 +682,21 @@ class HonseGame:
                 for collision in collisions:
                     collision[0].resolve_collision(collision[1])
 
+                # update sorted list
+                speed_sorted_characters = sorted(
+                    self.characters, key=lambda x: x.get_speed(), reverse=True
+                )
                 # update loop
-                for character in self.characters:
+                for character in speed_sorted_characters:
                     character.update()
 
                 # move loop
-                for character in self.characters:
+                for character in speed_sorted_characters:
                     character.move()
+
+                # end of turn effects
+                for character in speed_sorted_characters:
+                    character.end_of_turn()
 
                 # draw loop
                 # fainted characters should appear below other characters. Draw them first
@@ -658,6 +705,7 @@ class HonseGame:
                 ):
                     character.draw()
 
+                # draw particles that display on top
                 self.particle_spawner.emit(True)
                 for spawner in self.temporary_particle_spawners:
                     spawner.emit(True)
@@ -724,7 +772,26 @@ class HonseGame:
                     creationflags=subprocess.CREATE_NO_WINDOW
                 )
                 print("Audio added to video")
+    
                 
+def get_test_stats(base_stats):
+    stat_names = ["HP", "ATK", "DEF", "SPA", "SPD", "SPE"]
+    stats = {
+        "base stats": base_stats,
+        "ivs": {stat: random.randint(0, 31) for stat in stat_names},
+        "evs": {stat: 0 for stat in stat_names},
+        "nature": random.choice(list(honse_data.NATURES.values()))
+            }
+    ev_budget = 510
+    random.shuffle(stat_names)
+    for stat in stat_names:
+        evs = random.randint(0, min(255, ev_budget))
+        ev_budget -= evs
+        stats["evs"][stat] = evs
+        if ev_budget == 0:
+            break
+    return stats
+    
 
 
 test_pokemon = {
@@ -785,24 +852,24 @@ test_pokemon = {
         "types": [honse_pokemon.pokemon_types["Fire"], honse_pokemon.pokemon_types["Ground"]],
         "file": "camerupt.png"},
     }
+
 combatants = random.sample(list(test_pokemon.keys()), 8)
+
 # i am lazy and dont want to resize the map rn
 # plz pass in a map that is 3/4 the size of height and width for the second parameter
-
-game = HonseGame("map02.json", "noise.png", "wild", False, True)
+game = HonseGame("map03.json", "map03.png", "wild", True, True)
 for i, character in enumerate(combatants):
     team = 0 if i < 4 else 1
     game.add_character(
         character,
         team,
         100,
-        test_pokemon[character]["stats"],
+        get_test_stats(test_pokemon[character]["stats"]),
         random.sample(list(honse_pokemon.moves.values()), 4),
         test_pokemon[character]["types"],
         test_pokemon[character]["file"]
         )
 cProfile.run("game.main_loop()", sort="cumtime", filename="res")
-
 
 import pstats
 

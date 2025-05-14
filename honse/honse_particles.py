@@ -81,14 +81,13 @@ class CircleParticle:
             return self.remaining_lifetime > 0
         return True
 
-    def kill(self):
+    def on_death(self):
         if self.death_function is not None:
             death_function = self.death_function[0]
             recursions_left = self.death_function[1]
             if recursions_left > 0:
                 recursions_left -= 1
                 death_function(self.game, self.x, self.y, recursion_count=recursions_left)
-        del self
 
     def spawn_trail_particle(self):
         if self.leave_trail_every_nth_frame != -1 and self.lived_lifetime % self.leave_trail_every_nth_frame == 0:
@@ -333,7 +332,7 @@ class ParticleSpawner:
         for particle in self.particles:
             if particle.check_alive() == False:
                 self.particles.remove(particle)
-                particle.kill()
+                particle.on_death()
 
 
 """
@@ -616,7 +615,7 @@ def flame_animation(game, x, y, **kwargs):
 
 
 def psychic_animation(game, x, y, **kwargs):
-    lifetime = 12
+    lifetime = 20
     recursion_count = 1
     if lifetime in kwargs:
         lifetime = kwargs["lifetime"]
@@ -711,7 +710,7 @@ def ice_shatter_animation(game, x, y, **kwargs):
 
 
 def ice_animation(game, x, y, **kwargs):
-    lifetime = 30
+    lifetime = 40
     recursion_count = 1
     if lifetime in kwargs:
         lifetime = kwargs["lifetime"]
@@ -796,7 +795,7 @@ def old_bolt_animation(game, x, y, **kwargs):
 
 
 def punch_animation(game, x, y, **kwargs):
-    lifetime = 12
+    lifetime = 20
     recursion_count = 1
     if lifetime in kwargs:
         lifetime = kwargs["lifetime"]
