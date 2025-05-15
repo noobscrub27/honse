@@ -71,22 +71,55 @@ def damage_formula(move, attacker, defender, **kwargs):
         unmodified_attack = attacker.get_modified_stat(attack_stat, True)
     defense = defender.get_modified_stat(defense_stat)
     unmodified_defense = defender.get_modified_stat(defense_stat, True)
+    # logging stuff
+    move_text = f"Move: {move.name}, Base Power: {move.power}"
+    attacker_text = "defender" if "foul_play" in kwargs and kwargs["foul_play"] else "attacker"
+    attack_stat_source = attacker if attacker_text == "attacker" else defender
+    attack_header = f"Attack stat: {attacker_text}'s {attack_stat}:"
+    attack_text1 = f"\tBase stat: {attack_stat_source.base_stats[attack_stat]}, IV: {attack_stat_source.ivs[attack_stat]}, EV: {attack_stat_source.evs[attack_stat]}, Nature: {attack_stat_source.nature[attack_stat]}, Level: {attack_stat_source.level}"
+    attack_text2 = f"\tCompletely unmodified attack: {attack_stat_source.get_out_of_battle_stat(attack_stat)}, Base stat modifiers: {unmodified_attack}, All modifiers: {attack}"
+    defense_header = f"Defense stat: defender's {defense_stat}"
+    defense_text1 = f"\tBase stat: {defender.base_stats[defense_stat]}, IV: {defender.ivs[defense_stat]}, EV: {defender.evs[defense_stat]}, Nature: {defender.nature[defense_stat]}, Level: {defender.level}"
+    defense_text2 = f"\tCompletely unmodified defense: {defender.get_out_of_battle_stat(defense_stat)}, Base stat modifiers: {unmodified_defense}, All modifiers: {defense}"
+    attacker_effects = "Attacker effects:"
+    if len(attacker.effects):
+        for effect in attacker.effects:
+            attacker_effects += "\n\t" + str(effect)
+    else: attacker_effects += " None"
+    defender_effects = "Defender effects:"
+    if len(defender.effects):
+        for effect in defender.effects:
+            defender_effects += "\n\t" + str(effect)
+    else: defender_effects += " None"
+    if 1 in [attack, unmodified_attack, defense, unmodified_defense]:
+        bug_description = "SOMETHING WENT WRONG HERE! STAT VALUE OF 1 DETECTED."
+        honse_data.BUG_FINDER.found_bug(bug_description, attacker.game)
+        attacker.game.message_log.append([bug_description, False])
     crit_mod = attacker.crit_calc(move, defender)
     if crit_mod > 1:
         attack = max(attack, unmodified_attack)
         defense = min(defense, unmodified_defense)
-    damage = (
-        ((((2 * attacker.level) / 5) + 2) * move.current_bp * (attack / defense)) / 50
+    initial_damage = (
+        ((((2 * attacker.level) / 5) + 2) * move.current_power * (attack / defense)) / 50
     ) + 2
     # spread is only true for the non-primary target of spread moves
-    damage *= crit_mod
     if spread:
-        damage *= 0.5
-    damage *= defender.get_type_matchup(move.type)
+        spread_mod = 0.5
+    else:
+        spread_mod = 1
+    type_effectiveness = defender.get_type_matchup(move.type)
     if move.type in attacker.types:
-        damage *= 1.5
-    damage *= random.randint(85, 100) / 100
-    return max(1, math.floor(damage)), crit_mod > 1
+        stab_mod = 1.5
+    else:
+        stab_mod = 1
+    random_mod = random.randint(85, 100) / 100
+    damage = initial_damage * spread_mod * type_effectiveness * stab_mod * random_mod
+    damage =  max(1, math.floor(damage))
+    final_stat_text = f"Final attack: {attack}, Final defense: {defense}, Final power: {move.current_power}, Attacker level: {attacker.level}, Initial damage: {initial_damage}"
+    damage_mod_text = f"Spread: {spread_mod}, Effectiveness: {type_effectiveness}, Stab: {stab_mod}, Random: {random_mod}"
+    log_text = move_text + "\n" + attacker_effects + "\n" + defender_effects + "\n" + attack_header + "\n" + attack_text1 + "\n" + attack_text2 + "\n" + defense_header + "\n" + defense_text1 + "\n" + defense_text2 + "\n" + final_stat_text + "\n" + damage_mod_text + f"\nDamage: {damage}"
+    attacker.game.message_log.append([log_text, False])
+    return damage, crit_mod > 1
 
 
 class EffectTypes(enum.Enum):
@@ -132,10 +165,11 @@ STAT_EFFECTS = {
             "stage": EffectTypes.SPECIAL_ATTACK_STAGE},
     "SPD": {"override": EffectTypes.BASE_SPECIAL_DEFENSE_OVERRIDE,
             "modification": EffectTypes.SPECIAL_DEFENSE_MODIFICATION,
-            "stage": EffectTypes.SPECIAL_ATTACK_STAGE},
+            "stage": EffectTypes.SPECIAL_DEFENSE_STAGE},
     "SPE": {"override": EffectTypes.BASE_SPEED_OVERRIDE,
             "modification": EffectTypes.SPEED_MODIFICATION,
             "stage": EffectTypes.SPEED_STAGE}}
+
 STAT_NAMES = {
     "HP": "HP",
     "ATK": "Attack",
@@ -302,6 +336,8 @@ class Effect:
         self.text_size = 16
         if not hasattr(self, "effect_types"):
             self.effect_types = []
+        if not hasattr(self, "name"):
+            self.name = "Effect"
         if inflicted_by is not None:
             self.game = inflicted_by.game
         else:
@@ -357,8 +393,12 @@ class Effect:
     def end_effect(self):
         self.inflicted_upon.remove_status(self)
 
+    def __str__(self):
+        return f"{self.name} inflicted on {self.inflicted_upon.name} by {self.inflicted_by}'s {self.source.name}. Effect types: {self.effect_types}"
+
 class LeechSeedEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "LeechSeedEffect"
         self.damage = 1/16 # decimal representing portion of max hp
         self.damage_countdown = 300
         self.max_damage_countdown = 300
@@ -370,7 +410,7 @@ class LeechSeedEffect(Effect):
 
     def infliction(self):
         success = False
-        if len([effect for effect in self.inflicted_upon.effects if type(effect) is type(self)]) == 0:
+        if (pokemon_types["Grass"] not in self.inflicted_upon.types) and len([effect for effect in self.inflicted_upon.effects if type(effect) is type(self)]) == 0:
             success = self.inflicted_upon.inflict_status(self)
         if success:
             self.display_inflicted_message()
@@ -398,6 +438,7 @@ class LeechSeedEffect(Effect):
 
 class BurnEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "BurnEffect"
         self.damage = 1/16 # decimal representing portion of max hp
         self.damage_countdown = 300
         self.max_damage_countdown = 300
@@ -440,6 +481,7 @@ class BurnEffect(Effect):
 
 class FreezeEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "FreezeEffect"
         self.damage = 1/16 # decimal representing portion of max hp
         self.damage_countdown = 300
         self.max_damage_countdown = 300
@@ -482,10 +524,10 @@ class FreezeEffect(Effect):
 
 class ConfusionEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "ConfusionEffect"
         self.confusion_chance = 1/3
         self.effect_types = [
-            EffectTypes.BEFORE_ATTACK,
-            EffectTypes.NON_VOLATILE
+            EffectTypes.BEFORE_ATTACK
         ]
         super().__init__(inflicted_by, inflicted_upon, lifetime=1800, status_icon="confused", **kwargs)
         
@@ -518,6 +560,7 @@ class ConfusionEffect(Effect):
 
 class MustRechargeEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "MustRechargeEffect"
         if "lifetime" not in kwargs:
             super().__init__(inflicted_by, inflicted_upon, **kwargs, lifetime=300, status_icon="locked move")
         else:
@@ -537,6 +580,7 @@ class MustRechargeEffect(Effect):
 
 class ParalysisEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "ParalysisEffect"
         self.damage = 1/16 # decimal representing portion of max hp
         self.effect_types = [
             EffectTypes.AFTER_ATTACK,
@@ -575,6 +619,7 @@ class ParalysisEffect(Effect):
 
 class StatStageEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "StatStageEffect"
         self.stage = kwargs["stage"]
         if self.stage < 1:
             self.status_icon = "stat drop"
@@ -616,6 +661,7 @@ class StatStageEffect(Effect):
 
 class MoveSpeedModificationEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "MoveSpeedModificationEffect"
         self.modifier = kwargs["modifier"]
         if self.modifier < 1:
             self.status_icon = "stat drop"
@@ -648,6 +694,7 @@ class MoveSpeedModificationEffect(Effect):
 # reduces all cooldowns by a flat amount, then wears off
 class CooldownReductionEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "CooldownReductionEffect"
         if "reduction_amount" in kwargs:
             self.reduction_amount = kwargs["reduction_amount"]
         else:
@@ -660,6 +707,9 @@ class CooldownReductionEffect(Effect):
     def get_effect_value(self):
         return -1 * self.reduction_amount
 
+    def display_inflicted_message(self):
+        self.game.display_message(f"{self.inflicted_upon.name}'s cooldowns were reduced!", self.text_size, [0, 0, 0])
+
     def infliction(self):
         self.inflicted_upon.tick_cooldowns(self.reduction_amount)
 
@@ -668,6 +718,7 @@ class CooldownReductionEffect(Effect):
 # after 5 uses, the effect wears off
 class RolloutEffect(Effect):
     def __init__(self, inflicted_by, inflicted_upon, **kwargs):
+        self.name = "RolloutEffect"
         if "move_name" in kwargs:
             self.affected_move = kwargs["move_name"]
         else:
@@ -922,15 +973,23 @@ class Character:
             self.hitstop = 0
         return self.hitstop > 0
 
+    def get_out_of_battle_stat(self, stat):
+        base_stat = self.base_stats[stat]
+        ev = self.evs[stat]
+        iv = self.ivs[stat]
+        nature = self.nature[stat]
+        return other_stat_formula(base_stat, self.level, iv, ev, nature)
+
     def get_modified_stat(self, stat, ignore_modifications=False):
         override = STAT_EFFECTS[stat]["override"]
-        modification = STAT_EFFECTS[stat]["stage"]
+        stage = STAT_EFFECTS[stat]["stage"]
+        modification = STAT_EFFECTS[stat]["modification"]
         base_stat = self.apply_other_modifiers(override, self.base_stats[stat])
         ev = self.evs[stat]; iv = self.ivs[stat]; nature = self.nature[stat]
         unmodified_stat = other_stat_formula(base_stat, self.level, iv, ev, nature)
         if ignore_modifications:
             return max(1, int(unmodified_stat))
-        modified_stat = self.apply_stat_stages(modification, unmodified_stat)
+        modified_stat = self.apply_stat_stages(stage, unmodified_stat)
         modified_stat = self.apply_other_modifiers(modification, modified_stat)
         return max(1, int(modified_stat))
 
@@ -973,12 +1032,18 @@ class Character:
         return max(1, self.apply_other_modifiers(EffectTypes.MOVE_SPEED_MODIFICATION, speed))
 
     def get_acceleration(self):
-        return self.apply_stat_stages(
-            EffectTypes.ACCELERATION_MODIFICATION, self.acceleration
-        )
+        acceleration = self.acceleration
+        for effect in self.effects:
+            if EffectTypes.ACCELERATION_MODIFICATION in effect.effect_types:
+               acceleration = effect.activate(EffectTypes.ACCELERATION_MODIFICATION,  acceleration)
+        return acceleration
 
     def get_drag(self):
-        return self.apply_stat_stages(EffectTypes.DRAG_MODIFICATION, self.drag)
+        drag = self.drag
+        for effect in self.effects:
+            if EffectTypes.DRAG_MODIFICATION in effect.effect_types:
+               drag = effect.activate(EffectTypes.DRAG_MODIFICATION,  drag)
+        return drag
 
     def update_current_speed(self):
         speed = self.get_move_speed()
@@ -1089,8 +1154,6 @@ class Character:
             if len(self.effects):
                 for effect in self.effects:
                     self.remove_status(effect)
-                print(self.effects)
-
         else:
             self.tick_cooldowns()
 
@@ -1148,6 +1211,7 @@ class Character:
         if "silent" not in kwargs:
             percent = int(max(1, (100 * damage) // self.max_hp))
             self.game.display_message(f"{self.name} took {percent} damage.", 16, [0, 0, 0])
+            self.game.message_log.append([f"({percent}% = {damage}, {self.hp}/{self.max_hp})", False])
         if self.is_fainted():
             self.battle_stats["fainted"] = True
             if not self.same_team(source):
@@ -1170,6 +1234,7 @@ class Character:
         if "silent" not in kwargs:
             percent = int(max(1, (100 * healing) // self.max_hp))
             self.game.display_message(f"{self.name} recovered {percent} HP.", 16, [0, 0, 0])
+            self.game.message_log.append([f"({percent}% = {healing}, {self.hp}/{self.max_hp})", False])
         return healing
 
     def inflict_status(self, status):
@@ -1182,6 +1247,7 @@ class Character:
             self.ui_element.queue_status(status)
         else:
             self.has_non_volatile_status = True
+        self.game.message_log.append([f"{self.name} was inflicted with {type(status)} by {status.inflicted_by.name}'s {status.source.name}.", False])
         return True
 
     def remove_status(self, status):
@@ -1190,6 +1256,7 @@ class Character:
             self.ui_element.unqueue_status(status)
         else:
             self.has_non_volatile_status = False
+        self.game.message_log.append([f"{self.name}'s {type(status)} wore off.", False])
 
     def end_of_turn(self):
         for effect in self.effects:
@@ -1271,7 +1338,7 @@ class Move:
             self.targets_self = kwargs["targets_self"]
         else:
             self.targets_self = True
-        self.current_bp = self.power
+        self.current_power = self.power
         if "cooldown" not in kwargs:
             self.get_default_cooldown(**kwargs)
 
@@ -1281,8 +1348,8 @@ class Move:
         modifier = 1
         if "spread_radius" in kwargs:
             modifier *= 1.5
-        if "accuracy" in kwargs:
-            modifier *= 100 / kwargs["accuracy"]
+        if "accuracy" in kwargs and kwargs["accuracy"] != 100:
+            modifier *= 2 * 100 / kwargs["accuracy"]
         if self.crit_stage > 0:
             modifier *= 1.25
         if self.drain > 0:
@@ -1437,17 +1504,17 @@ class BasicAttack(Move):
                 break
 
     def apply_power_modifiers(self, user, target):
-        self.current_bp = self.power
+        self.current_power = self.power
         for effect in user.effects:
             if EffectTypes.ATTACKER_BASE_POWER_MODIFICATION in effect.effect_types:
-                self.current_bp *= effect.activate(EffectTypes.ATTACKER_BASE_POWER_MODIFICATION, move=self, user=user, target=target)
+                self.current_power *= effect.activate(EffectTypes.ATTACKER_BASE_POWER_MODIFICATION, move=self, user=user, target=target)
         for effect in target.effects:
             if EffectTypes.TARGET_BASE_POWER_MODIFICATION in effect.effect_types:
-                self.current_bp *= effect.activate(EffectTypes.TARGET_BASE_POWER_MODIFICATION, move=self, user=user, target=target)
-        self.current_bp = max(1, self.current_bp)
+                self.current_power *= effect.activate(EffectTypes.TARGET_BASE_POWER_MODIFICATION, move=self, user=user, target=target)
+        self.current_power = max(1, self.current_power)
 
     def on_use(self, user: Character, **kwargs):
-        self.current_bp = self.power
+        self.current_power = self.power
         if self.target == MoveTarget.NORMAL:
             target = kwargs["target"]
         elif self.target == MoveTarget.USER:
@@ -1485,7 +1552,7 @@ class BasicAttack(Move):
         # secondaries and other effects
         self.apply_move_effects(user, target)
         self.apply_secondaries(user, target)
-        self.current_bp = self.power
+        self.current_power = self.power
         return True
 
 unobtainable_moves = {
@@ -1825,7 +1892,7 @@ moves = {
         move_effects=[{
             "effect": CooldownReductionEffect,
             "affects user": True,
-            "kwargs": {"reduction_amount": 180}}]
+            "kwargs": {"reduction_amount": 300}}]
         ),
     "Ice Ball": BasicAttack(
         "Ice Ball",

@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os.path
 import tempfile
 import pygame
 
@@ -22,6 +23,7 @@ import os
 import subprocess
 import numpy as np
 from pydub import AudioSegment
+import datetime
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -83,11 +85,15 @@ class HonseGame:
         self.current_frame_messages = []
         self.all_frame_messages = []
         # message log for other purposes
+        # [message, dispalyed_to_users (bool)]
         self.message_log = []
         self.background = background
         self.current_frame_image = None
         self.current_frame_draw = None
-        self.video_out_path = "output.mp4"
+        now = datetime.datetime.now()
+        now_text = now.strftime("%m-%d-%Y %H-%M-%S ")
+        self.video_out_path = os.path.join("output", now_text+"output.mp4")
+        self.log_out_path = os.path.join("output", now_text+"log.txt")
         self.draw_every_nth_frame = 1
         music_folder = os.path.join("bgm", music_folder)
         files_in_music_folder = os.listdir(music_folder)
@@ -254,7 +260,7 @@ class HonseGame:
 
         def load_sfx(name: str) -> np.ndarray:
             if name not in sfx_cache:
-                print("Loading sound effect:", name)
+                #print("Loading sound effect:", name)
                 seg = (AudioSegment
                     .from_file(self.sounds[name][0])
                     .set_frame_rate(SR)
@@ -535,6 +541,7 @@ class HonseGame:
         self.characters.append(character)
 
     def display_message(self, text, font_index, RGBA):
+        self.message_log.append([text, True])
         self.current_frame_messages.append([text, font_index, RGBA])
 
     def render_all_messages(self):
@@ -636,14 +643,16 @@ class HonseGame:
         try:
             while self.running:
                 self.frame_count += 1
+                if len(self.message_log) and self.message_log[-1][0].startswith("##### FRAME "):
+                    self.message_log[-1][0] = f"##### FRAME {self.frame_count} #####"
+                else:
+                    self.message_log.append([f"##### FRAME {self.frame_count} #####", False])
                 # poll for events
-                # pygame.QUIT event means the user clicked X to close your window
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
                         sys.exit()
 
-                # fill the screen with a color to wipe away anything from last frame
                 self.draw_background()
 
                 # delete particles
@@ -725,9 +734,11 @@ class HonseGame:
                 else:
                     self.clock.tick(0)
                 average_fps.append(self.clock.get_fps())
+                '''
                 if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
                     print(f"FPS: {np.mean(average_fps)}")
                     average_fps = []
+                '''
 
                 if self.game_end:
                     self.game_end_timer -= 1
@@ -736,14 +747,23 @@ class HonseGame:
         except KeyboardInterrupt:
             self.running = False
         finally:
+            # i commented out some of these print statements for now
+            # i think we're at the point where most of the basic functionality is consistently working as expected
+            # so i don't want to outright delete these print logs as we may need them later
+            # we should be safe not to have all of them on screen each run
+            # especially now that ive added a way to run the game dozens of times for testing reasons
+            print(f"Game complete! Average FPS: {np.mean(average_fps)}")
+            with open(self.log_out_path, "w") as f:
+                for message in self.message_log:
+                    f.write(message[0]+"\n")
             if self.video_mode:
                 try:
                     self.video_writer.stdin.close()
-                    print("Closed FFmpeg stdin.")
+                    #print("Closed FFmpeg stdin.")
                 except Exception as e:
                     print(f"Failed to close FFmpeg stdin: {e}")
                 try:
-                    print("Waiting for FFmpeg to finish")
+                    #print("Waiting for FFmpeg to finish")
                     self.video_writer.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     print("FFmpeg did not terminate in time, killing it.")
@@ -756,9 +776,9 @@ class HonseGame:
                     )
                 else:
                     print("FFmpeg finished successfully.")
-                print("Rendering audio")
+                #print("Rendering audio")
                 self.render_audio()
-                print("Adding audio to video")
+                #print("Adding audio to video")
                 subprocess.run([
                     "ffmpeg",
                     "-y",
@@ -767,7 +787,7 @@ class HonseGame:
                     "-c:v", "copy",
                     "-c:a", "aac",
                     "-b:a", "192k",
-                    "output.mp4"
+                    self.video_out_path
                     ],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
@@ -775,7 +795,6 @@ class HonseGame:
                     creationflags=subprocess.CREATE_NO_WINDOW
                 )
                 print("Audio added to video")
-    
                 
 def get_test_stats(base_stats):
     stat_names = ["HP", "ATK", "DEF", "SPA", "SPD", "SPE"]
@@ -795,7 +814,6 @@ def get_test_stats(base_stats):
             break
     return stats
     
-
 
 test_pokemon = {
     "Saurbot": {
@@ -855,24 +873,33 @@ test_pokemon = {
         "types": [honse_pokemon.pokemon_types["Fire"], honse_pokemon.pokemon_types["Ground"]],
         "file": "camerupt.png"},
     }
+def play_game(games_to_play):
+    for i in range(games_to_play):
+        print(f"Starting game {i+1}/{games_to_play}.")
+        combatants = random.sample(list(test_pokemon.keys()), 8)
 
-combatants = random.sample(list(test_pokemon.keys()), 8)
-
-# i am lazy and dont want to resize the map rn
-# plz pass in a map that is 3/4 the size of height and width for the second parameter
-game = HonseGame("map03.json", "map03.png", "wild", True, True)
-for i, character in enumerate(combatants):
-    team = 0 if i < 4 else 1
-    game.add_character(
-        character,
-        team,
-        100,
-        get_test_stats(test_pokemon[character]["stats"]),
-        random.sample(list(honse_pokemon.moves.values()), 4),
-        test_pokemon[character]["types"],
-        test_pokemon[character]["file"]
-        )
-cProfile.run("game.main_loop()", sort="cumtime", filename="res")
+        # i am lazy and dont want to resize the map rn
+        # plz pass in a map that is 3/4 the size of height and width for the second parameter
+        game = HonseGame("map03.json", "map03.png", "wild", False, True)
+        for i, character in enumerate(combatants):
+            if i < 4:
+                team = 0
+            elif i < 8:
+                team = 1
+            else:
+                team = random.randint(0, 1)
+            game.add_character(
+                character,
+                team,
+                100,
+                get_test_stats(test_pokemon[character]["stats"]),
+                random.sample(list(honse_pokemon.moves.values()), 4),
+                test_pokemon[character]["types"],
+                test_pokemon[character]["file"]
+                )
+        game.main_loop()
+    print(honse_data.BUG_FINDER.get_found_bugs())
+cProfile.run("play_game(1)", sort="cumtime", filename="res")
 
 import pstats
 
@@ -881,10 +908,3 @@ p.strip_dirs()
 p.sort_stats("cumulative").print_stats(40)
 pygame.quit()
 
-
-'''
-things to look into
-a logging system that logs every stat and damage calculation.
-ive seen some weird stuff like a saurbot water gun doing insane amounts of damage to saur, which shouldnt happen
-
-'''

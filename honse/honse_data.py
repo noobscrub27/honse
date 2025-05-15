@@ -1,3 +1,4 @@
+from numpy.random import f
 import pygame
 import random
 import math
@@ -26,7 +27,7 @@ BASE_HEIGHT = 1080
 A_LOT_OF_FRAMES = 5184000
 
 # the number of frames a status icon will display before the next effect is displayed
-STATUS_ICON_BLINK_LENGTH = 120
+STATUS_ICON_BLINK_LENGTH = 90
 
 NATURES = {
     "Hardy": {"ATK": 1, "DEF": 1, "SPA": 1, "SPD": 1, "SPE": 1},
@@ -76,6 +77,29 @@ def from_sprite_sheet(image, width):
         x = i * width
         images.append(image.crop((x, 0, x+width, sprite_sheet_height)))
     return images
+
+# when you can't reproduce a bug, use the bug finder.
+# add code to detect when the bug occurs, and pass a brief description of what occurred and the game object to found_bug
+# then set the game to run a bunch of times and get_found_bugs at the end
+class BugFinder:
+    def __init__(self):
+        self.message_log = []
+
+    def found_bug(self, description, game):
+        game_log_file = game.log_out_path
+        frame = game.frame_count
+        self.message_log.append(f"{description} - Check frame {frame} of {game_log_file}.")
+
+    def get_found_bugs(self):
+        if len(self.message_log):
+            text = "Bugs found:\n"
+            for msg in self.message_log:
+                text += "\t" + msg + "\n"
+            return text.strip()
+        else:
+            return "No bugs found."
+
+BUG_FINDER = BugFinder()
 
 class UIElement:
     width = 360
