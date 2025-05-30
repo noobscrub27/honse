@@ -76,6 +76,8 @@ class HonseGame:
         self.dt = 0
         self.frame_count = 0
         self.characters = []
+        self.number_of_teams = 2
+        self.hazards = []
         self.json_path = json_path
         self.particle_spawner = honse_particles.ParticleSpawner(self)
         self.temporary_particle_spawners = []
@@ -107,6 +109,8 @@ class HonseGame:
         # this is stored in the game bc i want all the statuses to update at the same time
         # i think it will look nice :)
         self.update_status_icons_in_n_frames = honse_data.STATUS_ICON_BLINK_LENGTH
+        self.environment_type = honse_pokemon.ENVIRONMENTS["grass"]
+        self.weather = honse_pokemon.Weather.CLEAR
         self.load_map()
         self.create_sounds()
         self.play_music()
@@ -130,7 +134,15 @@ class HonseGame:
         thunderbolt = Image.open(os.path.join(path, "thunderbolt.png"))
         self.particle_images["thunderbolt"] = honse_data.from_sprite_sheet(thunderbolt, 60)
         self.particle_surfaces["thunderbolt"] = [honse_data.image_to_surface(item) for item in self.particle_images["thunderbolt"]]
-
+        ice = Image.open(os.path.join(path, "ice.png"))
+        new_size = (int(ice.size[0]*1.5), int(ice.size[1]*1.5))
+        ice = ice.resize(new_size)
+        transparent_ice = honse_data.alpha_change(ice.copy(), 75)
+        self.particle_images["ice"] = honse_data.from_sprite_sheet(ice, 120)
+        self.particle_surfaces["ice"] = [honse_data.image_to_surface(item) for item in self.particle_images["ice"]]
+        self.particle_images["ice transparent"] = honse_data.from_sprite_sheet(transparent_ice, 120)
+        self.particle_surfaces["ice transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["ice transparent"]]
+        
     def load_status_icons(self):
         path = os.path.join("vfx", "status icons")
         files = os.listdir(path)
@@ -369,7 +381,6 @@ class HonseGame:
                 self.screen.blit(circle_surface, (x - radius, y - radius))
             else:
                 pygame.draw.circle(self.screen, color, (x, y), int(radius))
-            return 
         if self.video_mode: 
             if rgba[3] == 255:
                 self.current_frame_draw.ellipse(
@@ -393,7 +404,7 @@ class HonseGame:
             region = self.current_frame_image.crop((min_x, min_y, max_x, max_y))
             blended = Image.alpha_composite(region, overlay)
             self.current_frame_image.paste(blended, (min_x, min_y))
-            return size
+        return size
 
     # https://stackoverflow.com/questions/34747946/rotating-a-square-in-pil
     # answer by Sparkler
@@ -643,6 +654,34 @@ class HonseGame:
         try:
             while self.running:
                 self.frame_count += 1
+                if not self.game_end:
+                    if self.frame_count == honse_data.SUDDEN_DEATH_FRAMES:
+                        self.display_message("Sudden death!", 48, [127, 0, 0])
+                    if self.frame_count >= honse_data.SUDDEN_DEATH_FRAMES:
+                        meteor_frequency = max(30, 300 // (2 ** (self.frame_count // honse_data.SUDDEN_DEATH_FRAMES)))
+                        if self.frame_count % meteor_frequency == 0:
+                            radius = 100
+                            max_x = ((3 * 1920) // 4) - radius
+                            max_y = ((3 * 1080) // 4) - radius
+                            damage_options = honse_pokemon.DamageEffectOptions(
+                                damage=1/4,
+                                percent_of_max_hp_damage=True,
+                                message="A falling meteor hit TARGET!",
+                                sound="Hit Normal Damage")
+                            hazard_options = honse_pokemon.HazardOptions(
+                                lifetime=180,
+                                hazard_set_radius_growth_time=90,
+                                active_radius_growth_time=60,
+                                active_full_radius_duration=30,
+                                knockback=5,
+                                immune_timer=45,
+                                effect=honse_pokemon.DamageEffect,
+                                effect_options=damage_options)
+                            honse_pokemon.Hazard(
+                                options=hazard_options,
+                                position=(random.randint(radius, max_x), random.randint(radius, max_y)),
+                                radius=radius,
+                                game=self)
                 if len(self.message_log) and self.message_log[-1][0].startswith("##### FRAME "):
                     self.message_log[-1][0] = f"##### FRAME {self.frame_count} #####"
                 else:
@@ -679,7 +718,7 @@ class HonseGame:
                     lambda c: not c.is_intangible(), self.characters
                 )
                 tangible_characters = sorted(
-                    tangible_characters, key=lambda x: x.get_speed(), reverse=True
+                    tangible_characters, key=lambda x: x.current_modified_stats["SPE"], reverse=True
                 )
 
                 collisions = []
@@ -696,21 +735,34 @@ class HonseGame:
 
                 # update sorted list
                 speed_sorted_characters = sorted(
-                    self.characters, key=lambda x: x.get_speed(), reverse=True
+                    self.characters, key=lambda x: x.current_modified_stats["SPE"], reverse=True
                 )
+
+                # check hazards
+                for hazard in self.hazards:
+                    for character in speed_sorted_characters:
+                        if hazard.can_activate(character) and hazard.is_colliding(character):
+                            hazard.activate(character)
                 # update loop
                 for character in speed_sorted_characters:
                     character.update()
+                for hazard in self.hazards:
+                    hazard.update()
 
                 # move loop
                 for character in speed_sorted_characters:
                     character.move()
+                for hazard in self.hazards:
+                    hazard.move()
 
                 # end of turn effects
                 for character in speed_sorted_characters:
                     character.end_of_turn()
 
                 # draw loop
+                # draw hazards
+                for hazard in self.hazards:
+                    hazard.draw()
                 # fainted characters should appear below other characters. Draw them first
                 for character in sorted(
                     self.characters, key=lambda x: 0 if x.is_fainted() else 1
@@ -877,10 +929,11 @@ def play_game(games_to_play):
     for i in range(games_to_play):
         print(f"Starting game {i+1}/{games_to_play}.")
         combatants = random.sample(list(test_pokemon.keys()), 8)
+        
 
         # i am lazy and dont want to resize the map rn
         # plz pass in a map that is 3/4 the size of height and width for the second parameter
-        game = HonseGame("map03.json", "map03.png", "wild", False, True)
+        game = HonseGame("map03.json", "map03.png", "wild", True, True)
         for i, character in enumerate(combatants):
             if i < 4:
                 team = 0
@@ -893,7 +946,7 @@ def play_game(games_to_play):
                 team,
                 100,
                 get_test_stats(test_pokemon[character]["stats"]),
-                random.sample(list(honse_pokemon.moves.values()), 4),
+                random.sample(list(honse_pokemon.MOVES.values()), 4),
                 test_pokemon[character]["types"],
                 test_pokemon[character]["file"]
                 )

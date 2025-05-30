@@ -9,6 +9,8 @@ from PIL import Image
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+STAT_BUFF_DURATION = 900
+MAX_EFFECT_VALUE = 1800
 
 COLLISION_INTANGIBILITY = 30
 FRAMES_PER_SECOND = 60
@@ -23,9 +25,10 @@ TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
 BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
 
+SUDDEN_DEATH_FRAMES = 2700
+
 # equates to 24 hours for when i want things to last indefinitely
 A_LOT_OF_FRAMES = 5184000
-
 # the number of frames a status icon will display before the next effect is displayed
 STATUS_ICON_BLINK_LENGTH = 90
 
@@ -56,6 +59,7 @@ NATURES = {
     "Careful": {"ATK": 1, "DEF": 1, "SPA": 0.9, "SPD": 1.1, "SPE": 1},
     "Quirky": {"ATK": 1, "DEF": 1, "SPA": 1, "SPD": 1, "SPE": 1},
     }
+
 
 def image_to_surface(image):
     return pygame.image.fromstring(
