@@ -1,0 +1,905 @@
+Boosts:
+	targets_self: False
+	chance: 10
+	details: {'spd': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': 2}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spd': -2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spe': 2}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 20
+	details: {'spe': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spd': 2}
+	description: 
+Trap:
+	targets_self: False
+	chance: 100
+	details: None
+	description: Traps non-ghost types, preventing them from escaping.
+Boosts:
+	targets_self: True
+	chance: 10
+	details: {'atk': 1, 'def': 1, 'spa': 1, 'spd': 1, 'spe': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spd': -1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['aquaring']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spd': 1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 30
+	details: ['flinch']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['attract']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spe': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 10
+	details: {'atk': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': -1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['banefulbunker']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 30
+	details: brn
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['bide']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['partiallytrapped']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['mustrecharge']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 10
+	details: brn
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 10
+	details: frz
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 20
+	details: brn
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 30
+	details: par
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 20
+	details: par
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 10
+	details: ['flinch']
+	description: 
+Recoil:
+	targets_self: True
+	chance: 100
+	details: 33.0
+	description: 
+Boosts:
+	targets_self: False
+	chance: 10
+	details: {'spe': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'def': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spe': -1}
+	description: 
+Burning Jealousy:
+	targets_self: False
+	chance: 100
+	details: None
+	description: Inflicts burn if the target has raised stats.
+Nonvolatile Status:
+	targets_self: False
+	chance: 100
+	details: par
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': 1, 'spd': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spa': -2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spd': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['charge']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 70
+	details: {'spa': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': -2}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['confusion']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 100
+	details: frz
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'def': 1, 'spa': 1, 'spd': 1, 'spe': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': -1, 'spd': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 10
+	details: {'evasion': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': 1, 'def': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'def': 1, 'accuracy': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spa': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 10
+	details: ['confusion']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': 1, 'spd': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': 3}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spe': -2}
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 10
+	details: psn
+	description: 
+Boosts:
+	targets_self: False
+	chance: 20
+	details: {'def': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 50
+	details: {'def': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 50
+	details: {'def': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'def': 1, 'spe': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['curse']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 20
+	details: {'spa': -1}
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 100
+	details: slp
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': 2, 'spa': 2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['defensecurl']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spe': -1}
+	description: 
+Recoil:
+	targets_self: True
+	chance: 100
+	details: 25.0
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['destinybond']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['protect']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['disable']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 20
+	details: ['confusion']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'evasion': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': -2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'spe': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 10
+	details: {'def': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 20
+	details: ['flinch']
+	description: 
+PP Change:
+	targets_self: False
+	chance: 100
+	details: -3
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['electrify']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['embargo']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['encore']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['endure']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['flinch']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 50
+	details: {'spa': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'def': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'accuracy': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'spa': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['focusenergy']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['followme']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['foresight']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['gastroacid']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': 2, 'spd': 2, 'spe': 2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'spa': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['grudge']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 30
+	details: psn
+	description: 
+Recoil:
+	targets_self: True
+	chance: 100
+	details: 50.0
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['healblock']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['helpinghand']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1, 'accuracy': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': 1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 30
+	details: ['confusion']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['imprison']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 100
+	details: brn
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['ingrain']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 30
+	details: {'def': -1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['kingsshield']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['laserfocus']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 50
+	details: {'accuracy': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['leechseed']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 10
+	details: par
+	description: 
+Boosts:
+	targets_self: False
+	chance: 50
+	details: {'spd': -1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['magiccoat']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['magnetrise']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': -2, 'spa': -2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 10
+	details: {'atk': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 20
+	details: {'atk': 1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'evasion': 2}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['minimize']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['miracleeye']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 30
+	details: {'accuracy': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 50
+	details: {'spa': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 10
+	details: {'spa': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': 2}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 40
+	details: {'accuracy': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['nightmare']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': -1, 'spa': -1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['noretreat']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['obstruct']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['octolock']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['lockedmove']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 20
+	details: {'atk': -1}
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 50
+	details: tox
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 100
+	details: psn
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['powder']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['powertrick']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 20
+	details: {'evasion': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': 1, 'spd': 1, 'spe': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['rage']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['ragepowder']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['regroup2']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 10
+	details: slp
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['roost']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 50
+	details: brn
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': -1, 'spe': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'def': -2}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 40
+	details: {'spd': -2}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 20
+	details: {'spd': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['throatchop']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'def': -1, 'spd': -1}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 2, 'def': 2, 'spa': 2, 'spd': 2, 'spe': 2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'accuracy': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['shadowfountain']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 100
+	details: tox
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': 1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': -1, 'def': -1, 'spa': -1, 'spd': -1, 'spe': -1}
+	description: 
+Random Status:
+	targets_self: False
+	chance: 100
+	details: ['brn', 'par', 'slp', 'psn', 'frz']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'def': 1, 'spd': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['spikyshield']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 20
+	details: psn
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'def': -1, 'spd': -1, 'atk': 2, 'spa': 2, 'spe': 2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spe': 2, 'atk': 1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['smackdown']
+	description: 
+Nonvolatile Status:
+	targets_self: False
+	chance: 40
+	details: psn
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['snatch']
+	description: 
+Cure Status:
+	targets_self: False
+	chance: 100
+	details: ['brn']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['spotlight']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 10
+	details: {'def': 1}
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['stockpile']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['substitute']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': -1, 'def': -1}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': 2}
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'evasion': -2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'atk': 2}
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spa': 3}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['tarshot']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['taunt']
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['telekinesis']
+	description: 
+Boosts:
+	targets_self: False
+	chance: 100
+	details: {'atk': -1, 'def': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['torment']
+	description: 
+Random Status:
+	targets_self: False
+	chance: 20
+	details: ['brn', 'par', 'frz']
+	description: 
+Volatile Status:
+	targets_self: True
+	chance: 100
+	details: ['uproar']
+	description: 
+Boosts:
+	targets_self: True
+	chance: 100
+	details: {'spe': -1, 'def': -1, 'spd': -1}
+	description: 
+Volatile Status:
+	targets_self: False
+	chance: 100
+	details: ['yawn']
+	description: 

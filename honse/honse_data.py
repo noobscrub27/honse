@@ -5,6 +5,7 @@ import math
 import numpy as np
 import os
 from PIL import Image
+import colorsys
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -25,7 +26,7 @@ TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
 BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
 
-SUDDEN_DEATH_FRAMES = 2700
+SUDDEN_DEATH_FRAMES = 7200
 
 # equates to 24 hours for when i want things to last indefinitely
 A_LOT_OF_FRAMES = 5184000
@@ -71,6 +72,22 @@ def alpha_change(image, alpha_percent):
     return Image.merge(
         "RGBA", (r, g, b, a.point(lambda x: (x * alpha_percent) // 100))
     )
+
+def hue_shift(image, shift_amount):
+    # get alpha
+    r, g, b, a = image.split()
+    # convert to hsv
+    image = image.convert("HSV")
+    h, s, v = image.split()
+    # hue shift
+    image = Image.merge("HSV", (h.point(lambda x: x + shift_amount), s, v))
+    # convert to rgb
+    image = image.convert("RGB")
+    # get rgb
+    r, g, b = image.split()
+    # reassemble rgb with previous alpha
+    image = Image.merge("RGBA", (r, g, b, a))
+    return image
 
 def from_sprite_sheet(image, width):
     images = []
@@ -171,6 +188,8 @@ class UIElement:
 
     def queue_status(self, status):
         appended = False
+        if status.status_icon is None or len(status.status_icon) == 0:
+            return
         if len(self.status_queue) > 0:     
             for sublist in self.status_queue:
                 if sublist[0].status_icon == status.status_icon:

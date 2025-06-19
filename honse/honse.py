@@ -137,12 +137,18 @@ class HonseGame:
         ice = Image.open(os.path.join(path, "ice.png"))
         new_size = (int(ice.size[0]*1.5), int(ice.size[1]*1.5))
         ice = ice.resize(new_size)
-        transparent_ice = honse_data.alpha_change(ice.copy(), 75)
+        transparent_ice = honse_data.alpha_change(ice.copy(), 60)
         self.particle_images["ice"] = honse_data.from_sprite_sheet(ice, 120)
         self.particle_surfaces["ice"] = [honse_data.image_to_surface(item) for item in self.particle_images["ice"]]
         self.particle_images["ice transparent"] = honse_data.from_sprite_sheet(transparent_ice, 120)
         self.particle_surfaces["ice transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["ice transparent"]]
-        
+        protect = Image.open(os.path.join(path, "barrier.png"))
+        protect = honse_data.hue_shift(protect, 115)
+        transparent_protect = honse_data.alpha_change(protect.copy(), 60)
+        self.particle_images["protect"] = honse_data.from_sprite_sheet(protect, 48)
+        self.particle_surfaces["protect"] = [honse_data.image_to_surface(item) for item in self.particle_images["protect"]]
+        self.particle_images["protect transparent"] = honse_data.from_sprite_sheet(transparent_protect, 48)
+        self.particle_surfaces["protect transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["protect transparent"]]
     def load_status_icons(self):
         path = os.path.join("vfx", "status icons")
         files = os.listdir(path)
@@ -382,17 +388,21 @@ class HonseGame:
             else:
                 pygame.draw.circle(self.screen, color, (x, y), int(radius))
         if self.video_mode: 
-            if rgba[3] == 255:
+            # the number of pixels that will be cut off by the edges of the screen
+            offscreen = False
+            if x - radius < 0 or x + radius > self.SCREEN_WIDTH * 3 // 4 or y - radius < 0 or y + radius > self.SCREEN_HEIGHT * 3 // 4:
+                offscreen = True
+            if rgba[3] == 255 and not offscreen:
                 self.current_frame_draw.ellipse(
                     (x - radius, y - radius, x + radius, y + radius), fill=rgba
                 )
                 return size
             # Doing alpha-composite magic here
             # - lina
-            min_x = max(0, int(x - radius))
-            min_y = max(0, int(y - radius))
-            max_x = min(self.SCREEN_WIDTH, int(x + radius))
-            max_y = min(self.SCREEN_HEIGHT, int(y + radius))
+            min_x = int(x - radius)
+            min_y = int(y - radius)
+            max_x = int(x + radius)
+            max_y = int(y + radius)
             box_width = max_x - min_x
             box_height = max_y - min_y
             if box_width <= 0 or box_height <= 0:
@@ -709,6 +719,7 @@ class HonseGame:
                     change_status_icon_this_frame = True
                 # update ui
                 for character in self.characters:
+                    character.tried_to_attack_this_frame = False
                     if change_status_icon_this_frame:
                         character.ui_element.next_status_icon()
                     character.ui_element.display()
@@ -924,13 +935,19 @@ test_pokemon = {
         "stats": {"HP": 100, "ATK": 110, "DEF": 75, "SPA": 125, "SPD": 90, "SPE": 40},
         "types": [honse_pokemon.pokemon_types["Fire"], honse_pokemon.pokemon_types["Ground"]],
         "file": "camerupt.png"},
+    "Electrode": {
+        "stats": {"HP": 60, "ATK": 80, "DEF": 70, "SPA": 100, "SPD": 80, "SPE": 150},
+        "types": [honse_pokemon.pokemon_types["Electric"]],
+        "file": "electrode.png"},
+    "Shuckle": {
+        "stats": {"HP": 20, "ATK": 10, "DEF": 230, "SPA": 10, "SPD": 230, "SPE": 5},
+        "types": [honse_pokemon.pokemon_types["Bug"], honse_pokemon.pokemon_types["Rock"]],
+        "file": "shuckle.png"},
     }
 def play_game(games_to_play):
     for i in range(games_to_play):
         print(f"Starting game {i+1}/{games_to_play}.")
         combatants = random.sample(list(test_pokemon.keys()), 8)
-        
-
         # i am lazy and dont want to resize the map rn
         # plz pass in a map that is 3/4 the size of height and width for the second parameter
         game = HonseGame("map03.json", "map03.png", "wild", True, True)
@@ -946,6 +963,7 @@ def play_game(games_to_play):
                 team,
                 100,
                 get_test_stats(test_pokemon[character]["stats"]),
+                #[honse_pokemon.MOVES["Blizzard"]],
                 random.sample(list(honse_pokemon.MOVES.values()), 4),
                 test_pokemon[character]["types"],
                 test_pokemon[character]["file"]
