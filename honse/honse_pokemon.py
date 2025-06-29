@@ -15,6 +15,11 @@ from dataclasses import dataclass, field
 from copy import deepcopy
 from typing import Optional
 
+BATTLE_TEXT_SIZE = {
+    "large": 24,
+    "medium": 16,
+    "small": 0}
+
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -447,7 +452,6 @@ class EffectInterface:
                  inflicted_upon=None,
                  lifetime: int = 5184000
                  ):
-        self.text_size = 16
         self.game = game
         self.inflicted_by = inflicted_by
         self.inflicted_upon = inflicted_upon
@@ -570,7 +574,7 @@ class LeechSeedEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} was seeded!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was seeded!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         if self.inflicted_by.is_fainted():
@@ -583,7 +587,7 @@ class LeechSeedEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.name}'s health is sapped by Leech Seed!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 health is sapped by Leech Seed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             healing = self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -622,7 +626,7 @@ class AquaRingEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} surrounded itself with a veil of water!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 surrounded itself with a veil of water!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         if self.inflicted_by.is_fainted():
@@ -723,7 +727,7 @@ class EndureEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} braced itself!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 braced itself!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_effect(self):
         if self.activated:
@@ -774,7 +778,7 @@ class DestinyBondEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} is trying to take its foe down with it!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is trying to take its foe down with it!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_FAINT:
@@ -817,7 +821,7 @@ class GrudgeEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} wants the foe to bear a grudge!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 wants the foe to bear a grudge!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_FAINT:
@@ -831,7 +835,7 @@ class GrudgeEffect(EffectInterface):
                         lifetime = honse_data.A_LOT_OF_FRAMES,
                         locked_moves= [attack.move])
                     MoveLockEffect(options, self.game, self.source, self.inflicted_upon, attacker)
-                    self.game.display_message(f"{attack.move.name} was locked due to the grudge!", self.text_size, [0, 0, 0])
+                    self.game.display_message(f"{attack.move.name} was locked due to the grudge!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
         return input_value
 
 class DefenseCurlEffect(EffectInterface):
@@ -872,7 +876,7 @@ class CenterOfAttentionEffect(EffectInterface):
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} became the center of attention!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 became the center of attention!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def instant_effect(self):
         # only one center of attention at a time
@@ -973,7 +977,7 @@ class DamagingVolatileEffect(EffectInterface):
             except AttributeError:
                 target = ""
             message = message.replace("USER", user).replace("TARGET", target)
-            self.game.display_message(message, self.text_size, [0, 0, 0])
+            self.game.display_message(message, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         self.damage_cooldown -= 1
@@ -1026,7 +1030,7 @@ class BurnEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} was burned!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was burned!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         self.damage_cooldown -= 1
@@ -1036,7 +1040,7 @@ class BurnEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.name} is hurt by its burn!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its burn!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1096,7 +1100,7 @@ class FreezeEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} was frozen!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was frozen!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         self.damage_cooldown -= 1
@@ -1106,7 +1110,7 @@ class FreezeEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.name} is hurt by its frostbite!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its frostbite!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1118,12 +1122,12 @@ class FreezeEffect(EffectInterface):
         elif effect == EffectTrigger.ON_HIT_BY_MOVE:
             attack = kwargs["attack"]
             if attack.type.name == "Fire" or attack.move.name in THAW_ON_HIT:
-                self.game.display_message(f"{self.inflicted_upon.name} was thawed!", self.text_size, [0, 0, 0])
+                self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was thawed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 self.end_effect()
         elif effect == EffectTrigger.ON_USE_MOVE:
             attack = kwargs["attack"]
             if attack.move.name in THAW_ON_USE:
-                self.game.display_message(f"{self.inflicted_upon.name} was thawed!", self.text_size, [0, 0, 0])
+                self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was thawed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 self.end_effect()
         return input_value
 
@@ -1163,7 +1167,7 @@ class PoisonEffect(EffectInterface):
 
     def display_inflicted_message(self):
         status_name = "badly poisoned" if self.badly_poisoned else "poisoned"
-        self.game.display_message(f"{self.inflicted_upon.name} was {status_name}!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was {status_name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         self.damage_cooldown -= 1
@@ -1173,7 +1177,7 @@ class PoisonEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.name} is hurt by its poison!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its poison!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             damage = self.inflicted_upon.max_hp * self.current_damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1225,11 +1229,11 @@ class ParalysisEffect(EffectInterface):
         super().update()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} was paralyzed!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was paralyzed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.AFTER_USE_MOVE:
-            self.game.display_message(f"{self.inflicted_upon.name} is hurt by its paralysis!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its paralysis!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1277,7 +1281,7 @@ class PartiallyTrappedEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} was frozen!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was trapped by {self.source.move.name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_of_turn(self):
         self.damage_cooldown -= 1
@@ -1287,7 +1291,7 @@ class PartiallyTrappedEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.name} is hurt by {self.source.move.name}!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by {self.source.move.name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1321,13 +1325,13 @@ class ConfusionEffect(EffectInterface):
         super().after_infliction()
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} became confused!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 became confused!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_TRY_USE_MOVE:
-            self.game.display_message(f"{self.inflicted_upon.name} is confused!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is confused!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             if random.random() <= self.confusion_chance:
-                self.game.display_message(f"It hurt itself in confusion!", self.text_size, [0, 0, 0])
+                self.game.display_message(f"It hurt itself in confusion!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 attack = Attack(UNOBTAINABLE_MOVES["confusion damage"], self.inflicted_upon, self.inflicted_upon, True)
                 damage, crit = damage_formula(attack, self.inflicted_upon, self.inflicted_upon)
                 self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1362,7 +1366,7 @@ class SleepEffect(EffectInterface):
         super().after_infliction()
         
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} fell asleep!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 fell asleep!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def get_effect_value(self):
         return 600
@@ -1482,7 +1486,7 @@ class MustRechargeEffect(MoveLockEffect):
         super().after_infliction()
         
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name} must recharge!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 must recharge!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def get_effect_value(self):
         # having the recharge status decrease cooldowns for being a negative status feels weird, so this is 0
@@ -1536,7 +1540,7 @@ class StatStageEffect(EffectInterface):
                     boost_descriptor += " sharply"
                 elif stage >= 3:
                     boost_descriptor += "drastically"
-            self.game.display_message(f"{self.inflicted_upon.name}'s {STAT_NAMES[stat].lower()} {boost_descriptor}!", self.text_size, [0, 0, 0])
+            self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 {STAT_NAMES[stat].lower()} {boost_descriptor}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.STAT_MODIFICATION:
@@ -1589,7 +1593,7 @@ class CritRatioEffect(EffectInterface):
             except AttributeError:
                 target = ""
             message = self.message.replace("USER", user).replace("TARGET", target)
-            self.game.display_message(message, self.text_size, [0, 0, 0])
+            self.game.display_message(message, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.CRIT_STAGE_MODIFICATION:
@@ -1636,7 +1640,7 @@ class MoveSpeedModificationEffect(EffectInterface):
             boost_descriptor = "slowed"
         else:
             boost_descriptor = "hastened"
-        self.game.display_message(f"{self.inflicted_upon.name} was {boost_descriptor}!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was {boost_descriptor}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.MOVE_SPEED_MODIFICATION:
@@ -1715,7 +1719,7 @@ class CooldownReductionEffect(EffectInterface):
         self.inflicted_upon.tick_cooldowns(self.reduction_amount)
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name}'s cooldowns were reduced!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 cooldowns were reduced!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
         
 
 # inflicts a random stat buff
@@ -1800,7 +1804,7 @@ class HazardClearEffect(EffectInterface):
             return -400
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_by.name} cleared away {self.hazards_cleared} nearby hazard{'s' if self.hazards_cleared != 1 else ''}!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_by.get_name()}$#000000 cleared away {self.hazards_cleared} nearby hazard{'s' if self.hazards_cleared != 1 else ''}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def instant_effect(self):
         for hazard in self.game.hazards:
@@ -1852,7 +1856,7 @@ class HealBellEffect(EffectInterface):
             if character.same_team(self.inflicted_by):
                 non_volatile_status = character.get_non_volatile_status()
                 if non_volatile_status is not None:
-                    self.game.display_message(f"{character.name}'s status was cured!", self.text_size, [0, 0, 0])
+                    self.game.display_message(f"{character.name}'s status was cured!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                     character.remove_status(non_volatile_status)
 
 class BellyDrumEffect(EffectInterface):
@@ -1908,7 +1912,7 @@ class TypeChangeEffect(EffectInterface):
         return 0
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.name}'s type was changed!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 type was changed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.TYPE_OVERRIDE:
@@ -2069,7 +2073,7 @@ class HelpingHandEffect(EffectInterface):
         return -300
 
     def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_by.name} is ready to help {self.inflicted_upon.name}!", self.text_size, [0, 0, 0])
+        self.game.display_message(f"{self.inflicted_by.get_name()}$#000000 is ready to help {self.inflicted_upon.get_name()}$#000000!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_USE_MOVE:
@@ -2147,7 +2151,7 @@ class DamageEffect(EffectInterface):
             except AttributeError:
                 target = ""
             message = self.message.replace("USER", user).replace("TARGET", target)
-            self.game.display_message(message, self.text_size, [0, 0, 0])
+            self.game.display_message(message, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
         
     def instant_effect(self):
         self.display_inflicted_message()
@@ -2209,7 +2213,7 @@ class Hazard:
                  game=None,
                  source=None,
                  inflicted_by: ... = None):
-        self.text_size = 16
+        BATTLE_TEXT_SIZE["medium"] = 16
         self.position = position
         self.effect = options.effect
         self.effect_options = options.effect_options
@@ -2343,21 +2347,46 @@ class CenterOfAttentionHazard(Hazard):
         distance = np.linalg.norm(self.position - target.position)
         target.velocity = ((self.position-target.position) / distance) * target.current_speed
 
+
+class Team:
+    def __init__(self, team_id, name, color):
+        self.team_id = team_id
+        self.name = name
+        self.color_rgb = color
+        self.color_hex = "#" + honse_data.hexify_tuple(color)
+        self.characters = []
+
+    def eliminated(self): 
+        for character in self.characters:
+            if not character.is_fainted():
+                return False
+        return True
+
+    def on_team(self, character):
+        return character in self.characters
+
+    def get_name(self):
+        return f"${self.color_hex}{self.name}"
+
+
+    
 class Character:
     def __init__(
-        self, game, name, team, level, stats, moves, types, image, teammate_id
+        self, game, name, team, level, stats, moves, types, image, size_multiplier
     ):
         self.game = game
         self.npc = False
         angle = random.uniform(0, 2 * np.pi)
         velocity = [np.cos(angle), np.sin(angle)]
         self.velocity = np.array(velocity, dtype=float)
+        self.base_size_multiplier = size_multiplier
         self.radius = 20
         self.name = name
         # the id of the team
         self.team = team
+        self.team.characters.append(self)
         # the id of the character on that team
-        self.teammate_id = teammate_id
+        self.teammate_id = len(self.team.characters)-1
         self.level = level
         self.base_stats = stats["base stats"]
         self.evs = stats["evs"]
@@ -2380,8 +2409,7 @@ class Character:
         self.effects = []
         self.max_hp = self.get_max_hp()
         self.hp = self.max_hp
-        self.image_name = image
-        self.get_image()
+        self.species_image_name = image
         self.hit_sound_to_play = None
         self.play_fainted_sound = False
         self.last_targeted_by = None
@@ -2410,8 +2438,11 @@ class Character:
         self.move_speed_modifier = 1
         self.current_base_speed = self.base_stats["SPE"]
         self.current_moves = [move for move in self.moves]
+        self.current_species_image_name = self.species_image_name
         self.drag_modifier = 1
         self.acceleration_modifier = 1
+        self.current_size_modifier = 1
+        self.get_image()
         self.recalculate()
         # these next two variables are used for center of effect hazards to ensure that a pokemon that was just dealt knockback is not pulled towards the center of effect
         # number of consecutive tangible frames
@@ -2423,12 +2454,13 @@ class Character:
             self.cooldowns[i] /= 4
             if self.cooldowns[i] > 0 and self.cooldowns[i] < 60:
                 self.cooldowns[i] = 60
-        ui_x = honse_data.BASE_WIDTH * (self.teammate_id * 3) / 16
-        ui_y = honse_data.BASE_HEIGHT - (
-            (honse_data.BASE_HEIGHT / 8) * (2 - self.team)
-        )
+        ui_x = honse_data.BASE_WIDTH - 250
+        ui_y =  (self.teammate_id * honse_data.BASE_HEIGHT / 8) + (honse_data.BASE_HEIGHT * self.team.team_id / 2)
         self.ui_element = honse_data.UIElement(ui_x, ui_y, self)
         self.spawn_in()
+
+    def get_name(self):
+        return f"${self.team.color_hex}{self.name}"
 
     def recalculate(self):
         for stat in ["ATK", "DEF", "SPA", "SPD", "SPE"]:
@@ -2458,7 +2490,7 @@ class Character:
 
     def spawn_in(self):
         while True:
-            self.position = np.array(self.game.spawn_in_area(self.team), dtype=float)
+            self.position = np.array(self.game.spawn_in_area(self.team.team_id), dtype=float)
             colliding = False
             for character in self.game.characters:
                 if character is self:
@@ -2470,9 +2502,12 @@ class Character:
                 break
 
     def get_image(self):
-        image = Image.open(self.image_name).convert('RGBA')
+        image = Image.open(self.current_species_image_name).convert('RGBA')
         cropped_image = image.getbbox()
         cropped_image = image.crop(cropped_image)
+        size_multiplier = self.base_size_multiplier * self.current_size_modifier
+        new_size = (int(cropped_image.width * size_multiplier), int(cropped_image.height * size_multiplier))
+        cropped_image = cropped_image.resize(new_size)
         self.width, self.height = cropped_image.size
         self.team_circle_radius = math.ceil(max(self.width, self.height) / 2) + 3
         self.radius = self.team_circle_radius
@@ -2484,9 +2519,9 @@ class Character:
             color=(0, 0, 0, 0),
         )
         color = (
-                honse_data.TEAM_COLORS[self.team][0],
-                honse_data.TEAM_COLORS[self.team][1],
-                honse_data.TEAM_COLORS[self.team][2],
+                self.team.color_rgb[0],
+                self.team.color_rgb[1],
+                self.team.color_rgb[2],
                 85,
             )
         background_draw = ImageDraw.Draw(background_image, "RGBA")
@@ -2517,7 +2552,7 @@ class Character:
         self.fainted_surface = honse_data.image_to_surface(self.fainted_image)
 
     def same_team(self, other):
-        return self.team == other.team
+        return self.team is other.team
 
     def get_types(self):
         return self.current_types
@@ -2696,7 +2731,7 @@ class Character:
                     # if an effect that would block the move usage triggers, it returns True
                     can_move = not activate_effect(EffectTrigger.ON_TRY_USE_MOVE, self, False, {"move": move})
                     if can_move:
-                        self.game.display_message(f"{self.name} used {move.name}!", 24, [0, 0, 0])
+                        self.game.display_message(f"{self.get_name()}$#000000 used {move.name}!", "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
                         attack = move.on_use(self, target=target)
                         successfully_moved = attack.success
                         if successfully_moved:
@@ -2842,7 +2877,7 @@ class Character:
             source.battle_stats["damage dealt"] += damage
         if not silent:
             percent = int(max(1, (100 * damage) // self.max_hp))
-            self.game.display_message(f"{self.name} took {percent} damage.", 16, [0, 0, 0])
+            self.game.display_message(f"{self.get_name()}$#000000 took {percent}% damage.", "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
             self.game.message_log.append([f"({percent}% = {damage}, {self.hp}/{self.max_hp})", False])
         if self.is_fainted():
             self.battle_stats["fainted"] = True
@@ -2850,7 +2885,7 @@ class Character:
                 source.battle_stats["kos"] += 1
             self.play_fainted_sound = True
             activate_effect(EffectTrigger.ON_FAINT, self, effect_kwargs={"attack": attack})
-            self.game.display_message(f"{self.name} fainted!", 24, [127, 0, 0])
+            self.game.display_message(f"{self.get_name()}$#961919 fainted!", "gen4", BATTLE_TEXT_SIZE["large"], (150, 25, 25, 255))
         return damage
 
 
@@ -2871,7 +2906,7 @@ class Character:
             source.battle_stats["healing given"] += healing
         if not silent:
             percent = int(max(1, (100 * healing) // self.max_hp))
-            self.game.display_message(f"{self.name} recovered {percent} HP.", 16, [0, 0, 0])
+            self.game.display_message(f"{self.get_name()}$#000000 recovered {percent} HP.", "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
             self.game.message_log.append([f"({percent}% = {healing}, {self.hp}/{self.max_hp})", False])
         return healing
 
@@ -2900,7 +2935,6 @@ class Character:
         for effect in self.effects:
             effect.end_of_turn()
             effect.update()
-
 
 class MoveTarget(enum.Enum):
     USER = enum.auto()
@@ -2999,6 +3033,8 @@ class Move:
             modifier *= 1.5
         if self.accuracy < 100:
             modifier *= 1.25 * 100 / self.accuracy
+        elif self.accuracy == 101:
+            modifier *= 0.9
         if self.crit_stage > 0:
             modifier *= 1.25
         if self.drain > 0:
@@ -3186,8 +3222,7 @@ class Attack:
             if not self.move.spread_can_hit_allies:
                 hazard_options.immune_teams.append(self.user.team)
             if not self.move.spread_can_hit_enemies:
-                enemy_teams = list(range(self.user.game.number_of_teams))
-                enemy_teams.remove(self.user.team)
+                enemy_teams = [team for team in self.game.teams if not team.on_team(self.user)]
                 hazard_options.immune_teams += enemy_teams
             hazard_options.color = self.type.hazard_color
             hazard_options.effect = MoveEffect
@@ -3233,7 +3268,7 @@ class Attack:
     def activte_protect(self):
         self.protect_activated = self.defender_protect and not self.attacker_feint and self.user is not self.target
         if self.protect_activated:
-            self.user.game.display_message(f"{self.target.name} protected itself!", 16, [0, 0, 0])
+            self.user.game.display_message(f"{self.target.get_name()}$#000000 protected itself!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             self.failure_message = ""
 
     def do_damage(self):
@@ -3241,20 +3276,20 @@ class Attack:
             # damage calc
             damage, crit = damage_formula(self, self.user, self.target)
             # display messages and vfx
-            if crit:
-                if self.move.spread_radius > 0:
-                    self.user.game.display_message(f"A critical hit on {self.target.name}!", 16, [0, 0, 0])
-                else:
-                    self.user.game.display_message("A critical hit!", 16, [0, 0, 0])
             effectiveness_quote, effectiveness_sound = get_type_effectiveness_stuff(self, self.target)
             if effectiveness_quote:
-                self.game.display_message(effectiveness_quote, 16, [0, 0, 0])
+                self.game.display_message(effectiveness_quote, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            if crit:
+                if self.move.spread_radius > 0:
+                    self.user.game.display_message(f"A critical hit on {self.target.get_name()}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                else:
+                    self.user.game.display_message("A critical hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             self.target.hit_sound_to_play = effectiveness_sound
             # do check endure
             if damage >= self.target.hp and self.defender_endure:
                 damage = self.target.hp - 1
                 self.endure_activated = True
-                self.game.display_message(f"{self.target.name} endured the hit!", 16, [0, 0, 0])
+                self.game.display_message(f"{self.target.get_name()}$#000000 endured the hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             self.damage_dealt = self.target.do_damage(self.user, damage, self)
             # knockback
             if self.damage_dealt > 0:
@@ -3265,11 +3300,11 @@ class Attack:
                 if self.move.drain > 0:
                     healing = max(1, int(self.damage_dealt * self.move.drain))
                     if self.user.do_healing(self.user, healing, silent=True) > 0:
-                        self.user.game.display_message(f"{self.target.name} had its energy drained!", 16, [0, 0, 0])
+                        self.user.game.display_message(f"{self.target.get_name()}$#000000 had its energy drained!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 if self.move.recoil > 0:
                     recoil = max(1, int(self.damage_dealt * self.move.recoil))
                     if self.user.do_damage(self.user, recoil, silent=True) > 0:
-                        self.user.game.display_message(f"{self.user.name} is damaged by recoil!", 16, [0, 0, 0])
+                        self.user.game.display_message(f"{self.target.get_name()}$#000000 is damaged by recoil!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
     
     def after_doing_damage(self):
         if self.damage_dealt > 0 or self.endure_activated:
@@ -3291,7 +3326,7 @@ class Attack:
                 follow_character = None
             self.play_effects(follow_character=follow_character)
         elif len(self.failure_message):
-            self.game.display_message(self.failure_message, 16, [0,0,0])
+            self.game.display_message(self.failure_message, "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
 
 class BideAttack(Attack):
     def activate(self):
@@ -3306,7 +3341,7 @@ class BideAttack(Attack):
         if not self.unleashing_bide:
             effect = BideEffect(None, self.game, self, self.user, self.user)
             if effect.success:
-                self.game.display_message(f"{self.user.name} is storing energy!", 16, [0,0,0])
+                self.game.display_message(f"{self.user.get_name()}$#000000 is storing energy!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 self.success = True
         super().apply_non_secondaries()
 

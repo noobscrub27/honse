@@ -55,6 +55,7 @@ class HonseGame:
         json_path,
         background,
         music_folder,
+        teams,
         pygame_mode,
         video_mode,
         width=1920,
@@ -75,8 +76,8 @@ class HonseGame:
         self.running = True
         self.dt = 0
         self.frame_count = 0
+        self.teams = teams
         self.characters = []
-        self.number_of_teams = 2
         self.hazards = []
         self.json_path = json_path
         self.particle_spawner = honse_particles.ParticleSpawner(self)
@@ -164,33 +165,9 @@ class HonseGame:
         return value if self.width_ratio == 1 else int(max(1, value*self.width_ratio))
 
     def font_setup(self):
-        # [pygame font, PIL font, height of font in pixels]
         self.message_fonts = {
-            16: [
-                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(16)),
-                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(16)),
-            ],
-            20: [
-                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(20)),
-                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(20)),
-            ],
-            24: [
-                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(24)),
-                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(24)),
-            ],
-            28: [
-                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(28)),
-                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(28)),
-            ],
-            48: [
-                pygame.font.Font(honse_data.FONT_NAME, self.times_width_ratio(48)),
-                ImageFont.truetype(honse_data.FONT_NAME, self.times_width_ratio(48)),
-            ],
+            "gen4": honse_data.HonseFont(self, "gen4", os.path.join("fonts", "pokemon-gen-4-fullwidth", "pokemon-gen-4-fullwidth.otf"))
         }
-        for value in self.message_fonts.values():
-            # im like 90% sure that ascent + descent is the same as font size
-            # but just in case it doesnt hurt to do it this way
-            value.append(value[0].get_ascent() - value[0].get_descent())
         self.message_y_offset = 5
         self.message_x_offset = 10
 
@@ -513,57 +490,35 @@ class HonseGame:
         draw.text((-size[0], -size[1]), text, (r, g, b, a), font=font)
         return img, (width, height)
 
-    def draw_text(self, x, y, text, font_key, r, g, b, a):
+    def draw_text(self, text, x, y):
         x = self.times_width_ratio(x)
         y = self.times_width_ratio(y)
-        if self.pygame_mode:
-            color = pygame.Color(r, g, b)
-            text_surface = self.message_fonts[font_key][0].render(text, False, color)
-            text_surface.set_alpha(a)
-            self.screen.blit(text_surface, (x, y))
-        if self.video_mode:
-            img, size = self.get_text_image(text, font_key, r, g, b, a)
-            self.current_frame_image.paste(img, (int(x), int(y)), img)
-        else:
-            size = (text_surface.get_width() * 1920 / self.SCREEN_WIDTH,
-             text_surface.get_height() * 1080 / self.SCREEN_HEIGHT)
-        return size
+        text.draw(x, y)
+        return text.get_size()
 
     def check_game_end(self):
-        team1_alive = len(
-            [
-                character
-                for character in self.characters
-                if character.team == 0 and not character.is_fainted()
-            ]
-        )
-        team2_alive = len(
-            [
-                character
-                for character in self.characters
-                if character.team == 1 and not character.is_fainted()
-            ]
-        )
-        if not team1_alive and team2_alive:
-            self.display_message("Team 2 wins!", 48, honse_data.TEAM_COLORS[1])
+        alive = []
+        for team in self.teams:
+            if not team.eliminated():
+                alive.append(team)
+        if len(alive) == 1:
+            self.display_message(alive[0].get_name()+" wins!", "gen4", 48, (0, 0, 0, 255))
             self.game_end = True
-        elif not team2_alive and team1_alive:
-            self.display_message("Team 1 wins!", 48, honse_data.TEAM_COLORS[0])
-            self.game_end = True
-        elif not team2_alive and not team1_alive:
-            self.display_message("Tie!", 48, [0, 0, 0])
+        elif len(alive) == 0:
+            self.display_message("Tie!", "gen4", 48, (0, 0, 0, 255))
             self.game_end = True
 
     def add_character(self, name, team, level, stats, moves, types, image):
         number_of_teammates = len([i for i in self.characters if i.team == team])
         character = honse_pokemon.Character(
-            self, name, team, level, stats, moves, types, image, number_of_teammates
+            self, name, team, level, stats, moves, types, image, 1
         )
         self.characters.append(character)
 
-    def display_message(self, text, font_index, RGBA):
-        self.message_log.append([text, True])
-        self.current_frame_messages.append([text, font_index, RGBA])
+    def display_message(self, text, font_name, size, rgba):
+        text = honse_data.HonseText(self, text, self.message_fonts[font_name], size, rgba)
+        self.message_log.append([text.display_text, True])
+        self.current_frame_messages.append(text)
 
     def render_all_messages(self):
         # this is where the next text box should be drawn
@@ -575,21 +530,23 @@ class HonseGame:
             self.all_frame_messages = [reversed_copy] + self.all_frame_messages
         frames_since_most_recent_frame = 0
         for frame_of_messages in self.all_frame_messages:
-            for message_data in frame_of_messages:
-                message = message_data[0]
-                font_key = message_data[1]
-                r = message_data[2][0]
-                g = message_data[2][1]
-                b = message_data[2][2]
+            for message in frame_of_messages:
                 if frames_since_most_recent_frame == 0:
-                    a = 255
+                    a = 224
                 else:
-                    a = max(127, (192 - 16 * frames_since_most_recent_frame))
-                x = int(honse_data.BASE_WIDTH * 0.75) + self.message_x_offset
-                y -= self.message_y_offset + self.message_fonts[font_key][2]
+                    a = max(64, (160 - 8 * frames_since_most_recent_frame))
+                new_background_color = (255, 255, 255, int(a))
+                if message.background_color != new_background_color:
+                    message.background_color = new_background_color
+                    message.gradient_size = 40
+                    message.background_image = None
+                    message.background_surface = None
+                    message.get_background_image()
+                x = self.message_x_offset + 50
+                y -= self.message_y_offset + message.background_image_size[1]
                 if y < 0:
                     return
-                self.draw_text(x, y, message, font_key, r, g, b, a)
+                message.draw(x, y)
                 y -= self.message_y_offset
             frames_since_most_recent_frame += 1
 
@@ -666,7 +623,7 @@ class HonseGame:
                 self.frame_count += 1
                 if not self.game_end:
                     if self.frame_count == honse_data.SUDDEN_DEATH_FRAMES:
-                        self.display_message("Sudden death!", 48, [127, 0, 0])
+                        self.display_message("Sudden death!", "gen4", 48, (127, 0, 0, 255))
                     if self.frame_count >= honse_data.SUDDEN_DEATH_FRAMES:
                         meteor_frequency = max(30, 300 // (2 ** (self.frame_count // honse_data.SUDDEN_DEATH_FRAMES)))
                         if self.frame_count % meteor_frequency == 0:
@@ -717,12 +674,6 @@ class HonseGame:
                 if self.update_status_icons_in_n_frames <= 0:
                     self.update_status_icons_in_n_frames = honse_data.STATUS_ICON_BLINK_LENGTH
                     change_status_icon_this_frame = True
-                # update ui
-                for character in self.characters:
-                    character.tried_to_attack_this_frame = False
-                    if change_status_icon_this_frame:
-                        character.ui_element.next_status_icon()
-                    character.ui_element.display()
 
                 # sort by speed
                 tangible_characters = filter(
@@ -788,20 +739,28 @@ class HonseGame:
                 if not self.game_end:
                     self.check_game_end()
 
+                # update ui
+                for character in self.characters:
+                    character.tried_to_attack_this_frame = False
+                    if change_status_icon_this_frame:
+                        character.ui_element.next_status_icon()
+                    character.ui_element.display()
+                
                 self.render_all_messages()
                 if self.running and self.frame_count % self.draw_every_nth_frame == 0:
                     self.show_display()
 
+                
                 if self.pygame_mode:
                     self.clock.tick(self.FRAMES_PER_SECOND)
                 else:
                     self.clock.tick(0)
                 average_fps.append(self.clock.get_fps())
-                '''
+                
                 if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
                     print(f"FPS: {np.mean(average_fps)}")
                     average_fps = []
-                '''
+                
 
                 if self.game_end:
                     self.game_end_timer -= 1
@@ -950,14 +909,14 @@ def play_game(games_to_play):
         combatants = random.sample(list(test_pokemon.keys()), 8)
         # i am lazy and dont want to resize the map rn
         # plz pass in a map that is 3/4 the size of height and width for the second parameter
-        game = HonseGame("map03.json", "map03.png", "wild", True, True)
+        number_of_teams = 2
+        teams = []
+        for i in range(number_of_teams):
+            teams.append(honse_pokemon.Team(i, f"Team {i+1}", honse_data.TEAM_COLORS[i]))
+        game = HonseGame("map03bw.json", "map03.png", "wild", teams, True, True)
+        
         for i, character in enumerate(combatants):
-            if i < 4:
-                team = 0
-            elif i < 8:
-                team = 1
-            else:
-                team = random.randint(0, 1)
+            team = teams[i % number_of_teams]
             game.add_character(
                 character,
                 team,
