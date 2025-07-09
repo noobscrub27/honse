@@ -1,0 +1,42 @@
+{
+	"Baku Punch": {
+		"override_defense_stat": "SPD"
+	},
+	"Psyshock": {
+		"override_defense_stat": "DEF"
+	},
+	"Psystrike": {
+		"override_defense_stat": "DEF"
+	},
+	"Secret Sword": {
+		"override_defense_stat": "DEF"
+	},
+	"Shadow Volley": {
+		"override_defense_stat": "DEF"
+	},
+	"Shadow Press": {
+		"override_attack_stat": "DEF"
+	},
+	"Foul Play": {
+		"foul_play": true
+	},
+	"Shadow Duplicity": {
+		"foul_play": true
+	},
+	"Chip Away": {
+		"ignore_defense_modifiers": true,
+		"ignore_evasion": true
+	},
+	"Darkest Lariat": {
+		"ignore_defense_modifiers": true,
+		"ignore_evasion": true
+	},
+	"Lightning Lance": {
+		"ignore_defense_modifiers": true,
+		"ignore_evasion": true
+	},
+	"Sacred Sword": {
+		"ignore_defense_modifiers": true,
+		"ignore_evasion": true
+	}
+}

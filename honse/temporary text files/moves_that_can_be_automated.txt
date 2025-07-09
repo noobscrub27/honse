@@ -306,6 +306,17 @@ Baby-Doll Eyes
 	priority: 1
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'atk': -1}, 'description': ''}]
+Baku Punch
+	description: The target is punched with a strange, dreamlike punch. This move does special damage to the target.
+	type: Psychic
+	category: Physical
+	power: 85
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Baneful Bunker
 	description: In addition to protecting the user from attacks, this move also poisons any attacker that makes direct contact.
 	type: Poison
@@ -350,17 +361,6 @@ Beak Cannon
 	priority: 0
 	drain: False
 	effects: []
-Bide
-	description: The user endures attacks for two turns, then strikes back to cause double the damage taken.
-	type: Normal
-	category: Physical
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 1
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['bide'], 'description': ''}]
 Bind
 	description: Things such as long bodies or tentacles are used to bind and squeeze the target for four to five turns.
 	type: Normal
@@ -713,6 +713,17 @@ Chilling Rime
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'frz', 'description': ''}]
+Chip Away
+	description: Looking for an opening, the user strikes consistently. The target's stat changes don't affect this attack's damage.
+	type: Normal
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Clamp
 	description: The target is clamped and squeezed by the user's very thick and sturdy shell for four to five turns.
 	type: Water
@@ -977,6 +988,17 @@ Dark Void
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'slp', 'description': ''}, {'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spe': 1}, 'description': ''}]
+Darkest Lariat
+	description: The user swings both arms and hits the target. The target's stat changes don't affect this attack's damage.
+	type: Dark
+	category: Physical
+	power: 85
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Dazzling Gleam
 	description: The user damages opposing Pokémon by emitting a powerful flash.
 	type: Fairy
@@ -1065,6 +1087,7 @@ Disable
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['disable'], 'description': ''}]
+
 Disarming Voice
 	description: Letting out a charming cry, the user does emotional damage to opposing Pokémon. This attack never misses.
 	type: Fairy
@@ -1703,6 +1726,17 @@ Force Palm
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 30, 'details': 'par', 'description': ''}]
+Foul Play
+	description: The user turns the target's power against it. The higher the target's Attack stat, the greater the move's power.
+	type: Dark
+	category: Physical
+	power: 95
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Frenzy Plant
 	description: The user slams the target with an enormous tree. The user can't move on the next turn.
 	type: Grass
@@ -2451,6 +2485,17 @@ Lightning Kick
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'par', 'description': ''}]
+Lightning Lance
+	description: The user pierces the foe with the speed of lightning. The target's stat changes don't affect this attack's damage.
+	type: Electric
+	category: Physical
+	power: 85
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Light of Ruin
 	description: Drawing power from the Eternal Flower, the user fires a powerful beam of light. This also damages the user quite a lot.
 	type: Fairy
@@ -3266,6 +3311,28 @@ Psycho Cut
 	priority: 0
 	drain: False
 	effects: []
+Psyshock
+	description: The user materializes an odd psychic wave to attack the target. This attack does physical damage.
+	type: Psychic
+	category: Special
+	power: 80
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Psystrike
+	description: The user materializes an odd psychic wave to attack the target. This attack does physical damage.
+	type: Psychic
+	category: Special
+	power: 100
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Quick Attack
 	description: The user lunges at the target at a speed that makes it almost invisible. This move always goes first.
 	type: Normal
@@ -3332,17 +3399,6 @@ Red Rush
 	priority: 0
 	drain: False
 	effects: [{'name': 'Recoil', 'targets_self': True, 'chance': 100, 'details': 33.0, 'description': ''}]
-Reflect
-	description: A wondrous wall of light is put up to reduce damage from physical attacks for five turns.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 101
-	target: allySide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Relic Song
 	description: The user sings an ancient song and attacks by appealing to the hearts of the listening opposing Pokémon. This may also induce sleep.
 	type: Normal
@@ -3475,6 +3531,17 @@ Sacred Fire
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 50, 'details': 'brn', 'description': ''}]
+Sacred Sword
+	description: The user attacks by slicing with a long horn. The target's stat changes don't affect this attack's damage.
+	type: Fighting
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Sand Tomb
 	description: The user traps the target inside a harshly raging sandstorm for four to five turns.
 	type: Ground
@@ -3783,6 +3850,17 @@ Shadow Down
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'def': -1, 'spd': -1}, 'description': ''}]
+Shadow Duplicity
+	description: The user uses malicious energy to turn the foe's power against it. The higher the target's Sp. Attack stat, the greater the move's power.
+	type: Shadow
+	category: Special
+	power: 80
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
 Shadow End
 	description: The user slams into its target using every ounce of its corrupted power. This attack also hurts the user massively.
 	type: Shadow
@@ -3827,17 +3905,6 @@ Shadow Fumes
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'tox', 'description': ''}]
-Shadow Hold
-	description: The user constricts the target in a grip of densely packed shadows, trapping and damaging it for 4-5 turns.
-	type: Shadow
-	category: Physical
-	power: 40
-	accuracy: 95
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
 Shadow Hubris
 	description: The user, overcome with corruption that causes it to experience unusual arrogance, lashes out to deal damage at the target and raise its Sp. Attack by 1 stage.
 	type: Shadow
@@ -3849,17 +3916,6 @@ Shadow Hubris
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spa': 1}, 'description': ''}]
-Shadow Hurl
-	description: The user's phantom hand chucks the target back at its party, forcing it to switch. Usually moves last.
-	type: Shadow
-	category: Physical
-	power: 65
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: -6
-	drain: False
-	effects: []
 Shadow Intensify
 	description: The powers of darkness embolden and fortify the user, increasing its Defense and Special Def by 1.
 	type: Shadow
@@ -3871,17 +3927,6 @@ Shadow Intensify
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'def': 1, 'spd': 1}, 'description': ''}]
-Shadow Inversion
-	description: The user commands dark forces to invert the target's stat changes.
-	type: Shadow
-	category: Special
-	power: 60
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Jolt
 	description: The user crashes into the target surrounded by dark static. Lowers Speed of the target by 2 stages.
 	type: Shadow
@@ -3893,39 +3938,6 @@ Shadow Jolt
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spe': -2}, 'description': ''}]
-Shadow Laser
-	description: The user injects darkness into air electrons. The negative overflow raises its Sp Attack by 1 stage and shoots a blacklight ray at the target the following turn.
-	type: Shadow
-	category: Special
-	power: 90
-	accuracy: 95
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Meld
-	description: The user employs a dark energy to average its Def and Sp. Def stats with those of the target.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Mirage
-	description: The user constructs a terrifying illusion to manufacture fear within the target. Deals damage based on the user's level.
-	type: Shadow
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Mist
 	description: The user sends out a thin veil of shadowy mist to lower the Attack and Sp. Attack of the target by 1 stage.
 	type: Shadow
@@ -3937,39 +3949,6 @@ Shadow Mist
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'atk': -1, 'spa': -1}, 'description': ''}]
-Shadow Monsoon
-	description: The user lets loose a current of liquid shadows, summoning heavy rain after attacking.
-	type: Shadow
-	category: Special
-	power: 90
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Moon
-	description: A blackened satellite heals the user's HP by 50% and boosts its Attack.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1}, 'description': ''}]
-Shadow Moss
-	description: Blackened foliage heals the user's HP by 50% and boosts its Sp. Defense.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spd': 1}, 'description': ''}]
 Shadow Panic
 	description: The user lets out cacophanous screams of corruption that confuse the target.
 	type: Shadow
@@ -3992,17 +3971,6 @@ Shadow Phoenix
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'def': -1}, 'description': ''}, {'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'brn', 'description': ''}]
-Shadow Pivot
-	description: After quickly tackling the opponent, the user vanishes into the shadows and switches to a different Pokémon.
-	type: Shadow
-	category: Physical
-	power: 65
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Press
 	description: The user pins the target down with its shadow-lined body. The higher the user's Defense stat, the greater the move's power.
 	type: Shadow
@@ -4020,28 +3988,6 @@ Shadow Punch
 	category: Physical
 	power: 80
 	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Punish
-	description: The more the target has powered up with stat changes, the greater the move's power. 55 Base Power + 30 per boost; No max power.
-	type: Shadow
-	category: Physical
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Rage
-	description: The user lets out all its frustration in an attack. Doubles in power if the user is affected by a status condition.
-	type: Shadow
-	category: Physical
-	power: 70
-	accuracy: 100
 	target: normal
 	crit: 0
 	priority: 0
@@ -4069,61 +4015,6 @@ Shadow Rave
 	priority: 0
 	drain: False
 	effects: [{'name': 'Recoil', 'targets_self': True, 'chance': 100, 'details': 33.0, 'description': ''}]
-Shadow Recruit
-	description: The user sends out a corruptive force to manipulate the foe into gaining the Shadow type.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Requital
-	description: Getting revenge on the target, the user forces darkness into their body with much greater power. Deals 1.5x damage of last attack.
-	type: Shadow
-	category: Physical
-	power: 0
-	accuracy: 100
-	target: scripted
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Reset
-	description: The user sends out a thick darkness that overwhelms the target's memory, damaging it and causing it to forget all stat changes.
-	type: Shadow
-	category: Special
-	power: 50
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Robbery
-	description: The user steals the target's attack boost in a cunning trap before dealing damage. Bypasses Substitute.
-	type: Shadow
-	category: Physical
-	power: 70
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Roulette
-	description: The user's possessed heart calls upon the void, dealing damage with a random base power.
-	type: Shadow
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Rush
 	description: The user harshly tackles the opponent with great force, also hurting itself.
 	type: Shadow
@@ -4168,83 +4059,6 @@ Shadow Shackle
 	priority: 0
 	drain: False
 	effects: [{'name': 'Trap', 'targets_self': False, 'chance': 100, 'details': None, 'description': 'Traps non-ghost types, preventing them from escaping.'}]
-Shadow Shatter
-	description: A shadowy chop that is so malicious that it will destroy screens before attacking.
-	type: Shadow
-	category: Physical
-	power: 75
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Shed
-	description: Darkness floods the battlefield, removing Screens, Hazards, Terrains, and lowering the target's evasion by 2.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Shuffle
-	description: The user sends out a shadowy whirlwind to force the target to switch.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: -6
-	drain: False
-	effects: []
-Shadow Signal
-	description: The user emits a corrupted frequency to embolden all Shadow-types in play, raising their Attack, Sp. Attack, and Speed by 1 stage; 2 stages in Shadow Sky.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Siren
-	description: All Pokémon that hear this funeral dirge echoing in the darkness faint in three turns, unless they switch out of battle.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Sky
-	description: The user blackens the atmosphere, creating a shadowy weather that batters non-Shadow pokemon every turn and boosts the power of Shadow moves.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Slander
-	description: The user shouts a deep-cutting insult to the target before switching out and lowering the target's Atk and Sp. Atk by 1 stage.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Slasher
 	description: The user relentlessly slashes at the target, hitting 2-5 times.
 	type: Shadow
@@ -4267,28 +4081,6 @@ Shadow Sneak
 	priority: 1
 	drain: False
 	effects: []
-Shadow Snipe
-	description: The user shoots a black bullet at the target, raising its Attack by 3 stages if it KOs it.
-	type: Shadow
-	category: Physical
-	power: 50
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Sorcery
-	description: Doubles in power if the foe is affected by a status condition.
-	type: Shadow
-	category: Special
-	power: 65
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Spell
 	description: The user casts the dark arts upon the target, damaging it and inflicting it with a random status.
 	type: Shadow
@@ -4300,17 +4092,6 @@ Shadow Spell
 	priority: 0
 	drain: False
 	effects: [{'name': 'Random Status', 'targets_self': False, 'chance': 100, 'details': ['brn', 'par', 'slp', 'psn', 'frz'], 'description': ''}]
-Shadow Spikes
-	description: The user solidifies shadows into sharp spikes and scatters them around the target and its allies.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: foeSide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Sprint
 	description: The user numbly attacks the target with increased priority under a cover of shadows.
 	type: Shadow
@@ -4320,28 +4101,6 @@ Shadow Sprint
 	target: normal
 	crit: 0
 	priority: 1
-	drain: False
-	effects: []
-Shadow Sprites
-	description: Corruptive pixies heal the user's HP by 50% and boost a random stat.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Squeeze
-	description: The user materializes a shadowy tentacle around the target to choke it. The more HP the target has, the greater this move's power. Max 100 power.
-	type: Shadow
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
 	drain: False
 	effects: []
 Shadow Stare
@@ -4366,50 +4125,6 @@ Shadow Storm
 	priority: 0
 	drain: False
 	effects: [{'name': 'Recoil', 'targets_self': True, 'chance': 100, 'details': 50.0, 'description': ''}]
-Shadow Strike
-	description: 
-	type: Ghost
-	category: Physical
-	power: 80
-	accuracy: 95
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 50, 'details': {'def': -1}, 'description': ''}]
-Shadow Stratoslam
-	description: The user draws in corrupted clouds and tackles the target, clearing any active weather.
-	type: Shadow
-	category: Physical
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Sun
-	description: A blackened star heals the user's HP by 50% and boosts its Sp. Attack.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spa': 1}, 'description': ''}]
-Shadow Swap
-	description: The user manipulates amorphous shadows to hide and switch its item with its opponent's.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Threat
 	description: The user threatens the target, confusing the target and causing it to anxiously raise its Defense and Sp. Defense in fear.
 	type: Shadow
@@ -4443,28 +4158,6 @@ Shadow Trance
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'slp', 'description': ''}]
-Shadow Transform
-	description: The user immerses itself in shadows to transform into a Shadow-Type doppelganger of the target and gain 1 stage in every stat.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1, 'def': 1, 'spa': 1, 'spd': 1, 'spe': 1}, 'description': ''}]
-Shadow Trip
-	description: The user bursts forth an ominous root around the target and whips its feet, causing it to fall. Deals more damage the heavier the target is.
-	type: Shadow
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Vampirism
 	description: The user drains the foe's energy using corrupted fangs, recovering half of all damage dealt.
 	type: Shadow
@@ -4487,17 +4180,6 @@ Shadow Velocity
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spe': 2}, 'description': ''}]
-Shadow Vengeance
-	description: The user obtains retribution against the foe. Deals more damage the lower the HP of the user.
-	type: Shadow
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Venom
 	description: The user pours out corruption-infused poison, inflicting Toxic upon the target.
 	type: Shadow
@@ -4542,17 +4224,6 @@ Shadow Wave
 	priority: 0
 	drain: False
 	effects: [{'name': 'Recoil', 'targets_self': True, 'chance': 100, 'details': 25.0, 'description': ''}]
-Shadow Wheel
-	description: The user whirls shadows around itself while spinning and hitting the target. This removes any hazards, leech seed, or trapping moves from the user.
-	type: Shadow
-	category: Physical
-	power: 60
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Whip
 	description: The user lashes the target with a harsh, shadowy tendril. This attack lowers the target's Defense by 1 stage.
 	type: Shadow
@@ -4564,39 +4235,6 @@ Shadow Whip
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'def': -1}, 'description': ''}]
-Shadow Whiteout
-	description: The user calls forth an avalanche of subzero shadows, summoning hail after attacking.
-	type: Shadow
-	category: Special
-	power: 90
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Wreckage
-	description: The user rampages uncontrollably, destroying everything around it. Clears the field of terrain and screens.
-	type: Shadow
-	category: Physical
-	power: 75
-	accuracy: 100
-	target: allAdjacent
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shadow Wyrm
-	description: Shadow dragons of myth swarm around the user to heal its HP by 75%.
-	type: Shadow
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sharpen
 	description: The user makes its edges more jagged, which raises its Attack stat.
 	type: Normal
@@ -4608,28 +4246,6 @@ Sharpen
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1}, 'description': ''}]
-Sheer Cold
-	description: The target faints instantly. It's less likely to hit the target if it's used by Pokémon other than Ice types.
-	type: Ice
-	category: Special
-	power: 0
-	accuracy: 30
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Shell Side Arm
-	description: 
-	type: Poison
-	category: Special
-	power: 90
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 20, 'details': 'psn', 'description': ''}]
 Shell Smash
 	description: The user breaks its shell, which lowers Defense and Sp. Def stats but sharply raises its Attack, Sp. Atk, and Speed stats.
 	type: Normal
@@ -4641,17 +4257,6 @@ Shell Smash
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'def': -1, 'spd': -1, 'atk': 2, 'spa': 2, 'spe': 2}, 'description': ''}]
-Shell Trap
-	description: The user sets a shell trap. If the user is hit by a contact move, the trap will explode and inflict damage on the opposing Pokémon and burn it.
-	type: Fire
-	category: Special
-	power: 150
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: -3
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'brn', 'description': ''}]
 Shift Gear
 	description: The user rotates its gears, raising its Attack stat and sharply raising its Speed stat.
 	type: Steel
@@ -4674,17 +4279,6 @@ Shock Wave
 	priority: 0
 	drain: False
 	effects: []
-Shore Up
-	description: The user regains up to half of its max HP. It restores more HP in a sandstorm.
-	type: Ground
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Signal Beam
 	description: The user attacks with a sinister beam of light. This may also confuse the target.
 	type: Bug
@@ -4696,17 +4290,6 @@ Signal Beam
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 10, 'details': ['confusion'], 'description': ''}]
-Silk Snare
-	description: Changes Kirlia's forme. In Stalker forme, damages and traps the foe for 4-5 turns. In Weaver forme, protects Kirlia and inflicts -2 speed to any contact move.
-	type: Bug
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
 Silver Wind
 	description: The target is attacked with powdery scales blown by the wind. This may also raise all the user's stats.
 	type: Bug
@@ -4718,17 +4301,6 @@ Silver Wind
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 10, 'details': {'atk': 1, 'def': 1, 'spa': 1, 'spd': 1, 'spe': 1}, 'description': ''}]
-Simple Beam
-	description: The user's mysterious psychic wave changes the target's Ability to Simple.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sing
 	description: A soothing lullaby is sung in a calming voice that puts the target into a deep slumber.
 	type: Normal
@@ -4740,83 +4312,6 @@ Sing
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'slp', 'description': ''}]
-Sizzly Slide
-	description: 
-	type: Fire
-	category: Physical
-	power: 60
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'brn', 'description': ''}]
-Sketch
-	description: It enables the user to permanently learn the move last used by the target. Once used, Sketch disappears.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Skill Swap
-	description: The user employs its psychic power to exchange Abilities with the target.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Skitter Smack
-	description: 
-	type: Bug
-	category: Physical
-	power: 70
-	accuracy: 90
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spa': -1}, 'description': ''}]
-Skull Bash
-	description: The user tucks in its head to raise its Defense stat on the first turn, then rams the target on the next turn.
-	type: Normal
-	category: Physical
-	power: 130
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Sky Attack
-	description: A second-turn attack move where critical hits land more easily. This may also make the target flinch.
-	type: Flying
-	category: Physical
-	power: 140
-	accuracy: 90
-	target: any
-	crit: 1
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 30, 'details': ['flinch'], 'description': ''}]
-Sky Drop
-	description: The user takes the target into the sky, then drops it during the next turn. The target cannot attack while in the sky.
-	type: Flying
-	category: Physical
-	power: 60
-	accuracy: 100
-	target: any
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sky Uppercut
 	description: The user attacks the target with an uppercut thrown skyward with force.
 	type: Fighting
@@ -4824,17 +4319,6 @@ Sky Uppercut
 	power: 85
 	accuracy: 90
 	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Slack Off
-	description: The user slacks off, restoring its own HP by up to half of its max HP.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
 	crit: 0
 	priority: 0
 	drain: False
@@ -4872,17 +4356,6 @@ Sleep Powder
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'slp', 'description': ''}]
-Sleep Talk
-	description: While it is asleep, the user randomly uses one of the moves it knows.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sludge
 	description: Unsanitary sludge is hurled at the target. This may also poison the target.
 	type: Poison
@@ -4916,34 +4389,12 @@ Sludge Wave
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'psn', 'description': ''}]
-Smack Down
-	description: The user throws a stone or similar projectile to attack an opponent. A flying Pokémon will fall to the ground when it's hit.
-	type: Rock
-	category: Physical
-	power: 50
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['smackdown'], 'description': ''}]
 Smart Strike
 	description: The user stabs the target with a sharp horn. This attack never misses.
 	type: Steel
 	category: Physical
 	power: 70
 	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Smelling Salts
-	description: This attack's power is doubled when used on a target with paralysis. This also cures the target's paralysis, however.
-	type: Normal
-	category: Physical
-	power: 70
-	accuracy: 100
 	target: normal
 	crit: 0
 	priority: 0
@@ -4971,17 +4422,6 @@ Smokescreen
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'accuracy': -1}, 'description': ''}]
-Snap Trap
-	description: 
-	type: Grass
-	category: Physical
-	power: 35
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
 Snarl
 	description: The user yells as if it's ranting about something, which lowers the Sp. Atk stat of opposing Pokémon.
 	type: Dark
@@ -4993,111 +4433,12 @@ Snarl
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spa': -1}, 'description': ''}]
-Snatch
-	description: The user steals the effects of any attempts to use a healing or stat-changing move.
-	type: Dark
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 4
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['snatch'], 'description': ''}]
-Snipe Shot
-	description: 
-	type: Water
-	category: Special
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 1
-	priority: 0
-	drain: False
-	effects: []
-Snore
-	description: This attack can be used only if the user is asleep. The harsh noise may also make the target flinch.
-	type: Normal
-	category: Special
-	power: 50
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 30, 'details': ['flinch'], 'description': ''}]
-Snuggle Bug
-	description: The user cuddles with the target using its comfy boosts. The more the user's stats are raised, the greater the move's power.
-	type: Bug
-	category: Physical
-	power: 20
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Soak
-	description: The user shoots a torrent of water at the target and changes the target's type to Water.
-	type: Water
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Soft-Boiled
-	description: The user restores its own HP by up to half of its max HP.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Solar Beam
-	description: In this two-turn attack, the user gathers light, then blasts a bundled beam on the next turn.
-	type: Grass
-	category: Special
-	power: 120
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Solar Blade
-	description: In this two-turn attack, the user gathers light and fills a blade with the light's energy, attacking the target on the next turn.
-	type: Grass
-	category: Physical
-	power: 125
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sunshine Dance
 	description: The user activates its chloroplasts and dances energetically to draw in solar energy and generate heat to blast at the opponent.
 	type: Fire
 	category: Special
 	power: 85
 	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Sonic Boom
-	description: The target is hit with a destructive shock wave that always inflicts 20 HP damage.
-	type: Normal
-	category: Special
-	power: 0
-	accuracy: 90
 	target: normal
 	crit: 0
 	priority: 0
@@ -5136,50 +4477,6 @@ Sparkling Aria
 	priority: 0
 	drain: False
 	effects: [{'name': 'Cure Status', 'targets_self': False, 'chance': 100, 'details': ['brn'], 'description': ''}]
-Sparkling Water
-	description: The user shoots a stream of crystal clear water. All stat changes are returned to normal.
-	type: Water
-	category: Special
-	power: 85
-	accuracy: 101
-	target: allAdjacent
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Sparkly Swirl
-	description: 
-	type: Fairy
-	category: Special
-	power: 120
-	accuracy: 85
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Spectral Thief
-	description: The user hides in the target's shadow, steals the target's stat boosts, and then attacks.
-	type: Ghost
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Speed Swap
-	description: The user exchanges Speed stats with the target.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Spider Web
 	description: The user ensnares the target with thin, gooey silk that traps and damages it for 4-5 turns, and also lowers its speed.
 	type: Bug
@@ -5202,17 +4499,6 @@ Spike Cannon
 	priority: 0
 	drain: False
 	effects: []
-Spikes
-	description: The user lays a trap of spikes at the opposing team's feet. The trap hurts Pokémon that switch into battle.
-	type: Ground
-	category: Status
-	power: 0
-	accuracy: 101
-	target: foeSide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Spiky Shield
 	description: In addition to protecting the user from attacks, this move also damages any attacker who makes direct contact.
 	type: Grass
@@ -5224,17 +4510,6 @@ Spiky Shield
 	priority: 4
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['spikyshield'], 'description': ''}]
-Spirit Break
-	description: 
-	type: Fairy
-	category: Physical
-	power: 75
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spa': -1}, 'description': ''}]
 Spirit Shackle
 	description: The user attacks while simultaneously stitching the target's shadow to the ground to prevent the target from escaping.
 	type: Ghost
@@ -5246,50 +4521,6 @@ Spirit Shackle
 	priority: 0
 	drain: False
 	effects: [{'name': 'Trap', 'targets_self': False, 'chance': 100, 'details': None, 'description': 'Traps non-ghost types, preventing them from escaping.'}]
-Spit Up
-	description: The power stored using the move Stockpile is released at once in an attack. The more power is stored, the greater the move's power. 120 power per Stockpile.
-	type: Normal
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Spite
-	description: The user unleashes its grudge on the move last used by the target by cutting 4 PP from it.
-	type: Ghost
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Splash
-	description: The user just flops and splashes around to no effect at all...
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Splishy Splash
-	description: 
-	type: Water
-	category: Special
-	power: 90
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 30, 'details': 'par', 'description': ''}]
 Spore
 	description: The user scatters bursts of spores that induce sleep.
 	type: Grass
@@ -5323,17 +4554,6 @@ Spotlight
 	priority: 3
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['spotlight'], 'description': ''}]
-Stealth Rock
-	description: The user lays a trap of levitating stones around the opposing team. The trap hurts opposing Pokémon that switch into battle.
-	type: Rock
-	category: Status
-	power: 0
-	accuracy: 101
-	target: foeSide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Steam Eruption
 	description: The user immerses the target in superheated steam. This may also leave the target with a burn.
 	type: Water
@@ -5356,28 +4576,6 @@ Steamroller
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 30, 'details': ['flinch'], 'description': ''}]
-Steel Beam
-	description: 
-	type: Steel
-	category: Special
-	power: 140
-	accuracy: 95
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Steel Roller
-	description: 
-	type: Steel
-	category: Physical
-	power: 130
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Steel Wing
 	description: The target is hit with wings of steel. This may also raise the user's Defense stat.
 	type: Steel
@@ -5389,17 +4587,6 @@ Steel Wing
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 10, 'details': {'def': 1}, 'description': ''}]
-Sticky Web
-	description: The user weaves a sticky net around the opposing team, which lowers their Speed stat upon switching into battle.
-	type: Bug
-	category: Status
-	power: 0
-	accuracy: 101
-	target: foeSide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Stockpile
 	description: The user charges up power and raises both its Defense and Sp. Def stats. The move can be used three times.
 	type: Normal
@@ -5422,17 +4609,6 @@ Stomp
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 30, 'details': ['flinch'], 'description': ''}]
-Stomping Tantrum
-	description: Driven by frustration, the user attacks the target. If the user's previous move has failed, the power of this move doubles.
-	type: Ground
-	category: Physical
-	power: 75
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Stone Edge
 	description: The user stabs the target from below with sharpened stones. Critical hits land more easily.
 	type: Rock
@@ -5444,55 +4620,11 @@ Stone Edge
 	priority: 0
 	drain: False
 	effects: []
-Stored Power
-	description: The user attacks the target with stored power. The more the user's stats are raised, the greater the move's power.
-	type: Psychic
-	category: Special
-	power: 20
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Storm Throw
-	description: The user strikes the target with a fierce blow. This attack always results in a critical hit.
-	type: Fighting
-	category: Physical
-	power: 60
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Strange Steam
-	description: 
-	type: Fairy
-	category: Special
-	power: 90
-	accuracy: 95
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 20, 'details': ['confusion'], 'description': ''}]
 Strength
 	description: The target is slugged with a punch thrown at maximum power.
 	type: Normal
 	category: Physical
 	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Strength Sap
-	description: The user restores its HP by the same amount as the target's Attack stat. It also lowers the target's Attack stat.
-	type: Grass
-	category: Status
-	power: 0
 	accuracy: 100
 	target: normal
 	crit: 0
@@ -5510,17 +4642,6 @@ String Shot
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spe': -2}, 'description': ''}]
-Stripe Style
-	description: This attack's effects vary depending on Basculin's stripe color. Red Stripe Basculin will use Red Rush, and Blue Striped Basculin will use Blue Bites.
-	type: Water
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Struggle Bug
 	description: While resisting, the user attacks the opposing Pokémon. This lowers the Sp. Atk stat of those hit.
 	type: Bug
@@ -5532,17 +4653,6 @@ Struggle Bug
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spa': -1}, 'description': ''}]
-Stuff Cheeks
-	description: 
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Stun Spore
 	description: The user scatters a cloud of numbing powder that paralyzes the target.
 	type: Grass
@@ -5576,17 +4686,6 @@ Substitute
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['substitute'], 'description': ''}]
-Sucker Punch
-	description: This move enables the user to attack first. This move fails if the target is not readying an attack.
-	type: Dark
-	category: Physical
-	power: 70
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 1
-	drain: False
-	effects: []
 Sugar Slam
 	description: The user sweetens its body and then crashes into the target with a confectionary body slam. Has a 10% chance to lower speed.
 	type: Fairy
@@ -5598,34 +4697,12 @@ Sugar Slam
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 10, 'details': {'spe': -1}, 'description': ''}]
-Sunny Day
-	description: The user intensifies the sun for five turns, powering up Fire-type moves. It lowers the power of Water-type moves.
-	type: Fire
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sunsteel Strike
 	description: The user slams into the target with the force of a meteor. This move can be used on the target regardless of its Abilities.
 	type: Steel
 	category: Physical
 	power: 100
 	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Super Fang
-	description: The user chomps hard on the target with its sharp front fangs. This cuts the target's HP in half.
-	type: Normal
-	category: Physical
-	power: 0
-	accuracy: 90
 	target: normal
 	crit: 0
 	priority: 0
@@ -5664,17 +4741,6 @@ Surf
 	priority: 0
 	drain: False
 	effects: []
-Surging Strikes
-	description: 
-	type: Water
-	category: Physical
-	power: 25
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Swagger
 	description: The user enrages and confuses the target. However, this also sharply raises the target's Attack stat.
 	type: Normal
@@ -5686,28 +4752,6 @@ Swagger
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'atk': 2}, 'description': ''}, {'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['confusion'], 'description': ''}]
-Swallow
-	description: The power stored using the move Stockpile is absorbed by the user to heal its HP. Storing more power heals more HP- 50, 75, or 100 depending on Stockpiles.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Sweep Up
-	description: The user sweeps the space around it in a hurried manner. Clears all hazards on the field and clears terrain.
-	type: Normal
-	category: Physical
-	power: 40
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Sweet Kiss
 	description: The user kisses the target with a sweet, angelic cuteness that causes confusion.
 	type: Fairy
@@ -5741,17 +4785,6 @@ Swift
 	priority: 0
 	drain: False
 	effects: []
-Switcheroo
-	description: The user trades held items with the target faster than the eye can follow.
-	type: Dark
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Swords Dance
 	description: A frenetic dance to uplift the fighting spirit. This sharply raises the user's Attack stat.
 	type: Normal
@@ -5770,28 +4803,6 @@ Sword Stream
 	power: 25
 	accuracy: 100
 	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Synchronoise
-	description: The user uses an odd shock wave to attack anything around it. Deals double damage to Pokémon that share a typing with the user.
-	type: Psychic
-	category: Special
-	power: 65
-	accuracy: 100
-	target: allAdjacent
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Synthesis
-	description: The user restores its own HP. The amount of HP regained varies with the weather.
-	type: Grass
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
 	crit: 0
 	priority: 0
 	drain: False
@@ -5840,17 +4851,6 @@ Tail Whip
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'def': -1}, 'description': ''}]
-Tailwind
-	description: The user whips up a turbulent whirlwind that ups the Speed stat of the user and its allies for four turns.
-	type: Flying
-	category: Status
-	power: 0
-	accuracy: 101
-	target: allySide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Take Down
 	description: A reckless, full-body charge attack for slamming into the target. This also damages the user a little.
 	type: Normal
@@ -5862,17 +4862,6 @@ Take Down
 	priority: 0
 	drain: False
 	effects: [{'name': 'Recoil', 'targets_self': True, 'chance': 100, 'details': 25.0, 'description': ''}]
-Tar Shot
-	description: 
-	type: Rock
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spe': -1}, 'description': ''}, {'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['tarshot'], 'description': ''}]
 Taunt
 	description: The target is taunted into a rage that allows it to use only attack moves for three turns.
 	type: Dark
@@ -5895,17 +4884,6 @@ Tearful Look
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'atk': -1, 'spa': -1}, 'description': ''}]
-Teatime
-	description: 
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Techno Blast
 	description: The user fires a beam of light at its target. The move's type changes depending on the Drive the user holds.
 	type: Normal
@@ -5939,72 +4917,6 @@ Telekinesis
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['telekinesis'], 'description': ''}]
-Teleport
-	description: Use it to flee from any wild Pokémon.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: -6
-	drain: False
-	effects: []
-Terrain Pulse
-	description: 
-	type: Normal
-	category: Special
-	power: 50
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Thief
-	description: The user attacks and steals the target's held item simultaneously. The user can't steal anything if it already holds an item.
-	type: Dark
-	category: Physical
-	power: 60
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Thousand Arrows
-	description: This move also hits opposing Pokémon that are in the air. Those Pokémon are knocked down to the ground.
-	type: Ground
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['smackdown'], 'description': ''}]
-Thousand Waves
-	description: The user attacks with a wave that crawls along the ground. Those hit can't flee from battle.
-	type: Ground
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Thrash
-	description: The user rampages and attacks for two to three turns. The user then becomes confused.
-	type: Normal
-	category: Physical
-	power: 120
-	accuracy: 100
-	target: randomNormal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['lockedmove'], 'description': ''}]
 Throat Chop
 	description: The user attacks the target's throat, and the resultant suffering prevents the target from using moves that emit sound for two turns.
 	type: Dark
@@ -6016,17 +4928,6 @@ Throat Chop
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['throatchop'], 'description': ''}]
-Thunder
-	description: A wicked thunderbolt is dropped on the target to inflict damage. This may also leave the target with paralysis.
-	type: Electric
-	category: Special
-	power: 110
-	accuracy: 70
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 30, 'details': 'par', 'description': ''}]
 Thunderbolt
 	description: A strong electric blast crashes down on the target. This may also leave the target with paralysis.
 	type: Electric
@@ -6038,17 +4939,6 @@ Thunderbolt
 	priority: 0
 	drain: False
 	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'par', 'description': ''}]
-Thunder Cage
-	description: 
-	type: Electric
-	category: Special
-	power: 80
-	accuracy: 90
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
 Thunder Crash
 	description: The user divebombs into the target with the force of a lightning strike. This also damages the user terribly.
 	type: Electric
@@ -6071,17 +4961,6 @@ Thunder Fang
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 10, 'details': ['flinch'], 'description': ''}, {'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'par', 'description': ''}]
-Thunderous Kick
-	description: 
-	type: Fighting
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'def': -1}, 'description': ''}]
 Thunder Punch
 	description: The target is punched with an electrified fist. This may also leave the target with paralysis.
 	type: Electric
@@ -6126,17 +5005,6 @@ Tickle
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'atk': -1, 'def': -1}, 'description': ''}]
-Topsy-Turvy
-	description: All stat changes affecting the target turn topsy-turvy and become the opposite of what they were.
-	type: Dark
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Torment
 	description: The user torments and enrages the target, making it incapable of using the same move twice in a row.
 	type: Dark
@@ -6148,28 +5016,6 @@ Torment
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['torment'], 'description': ''}]
-Toxic
-	description: A move that leaves the target badly poisoned. Its poison damage worsens every turn. Infiltrates and non-reflectable in Miasma.
-	type: Poison
-	category: Status
-	power: 0
-	accuracy: 90
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'tox', 'description': ''}]
-Toxic Spikes
-	description: The user lays a trap of poison spikes at the feet of the opposing team. The spikes will poison opposing Pokémon that switch into battle.
-	type: Poison
-	category: Status
-	power: 0
-	accuracy: 101
-	target: foeSide
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Toxic Thread
 	description: The user shoots poisonous threads to poison the target and also lower the target's Speed stat.
 	type: Poison
@@ -6181,17 +5027,6 @@ Toxic Thread
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 10, 'details': {'spe': -1}, 'description': ''}, {'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'psn', 'description': ''}]
-Transform
-	description: The user transforms into a copy of the target right down to having the same move set.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Tri Attack
 	description: The user strikes with a simultaneous three-beam attack. May also burn, freeze, or paralyze the target.
 	type: Normal
@@ -6203,61 +5038,6 @@ Tri Attack
 	priority: 0
 	drain: False
 	effects: [{'name': 'Random Status', 'targets_self': False, 'chance': 20, 'details': ['brn', 'par', 'frz'], 'description': ''}]
-Trick
-	description: The user catches the target off guard and swaps its held item with its own.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Trick-or-Treat
-	description: The user takes the target trick-or-treating. This adds Ghost type to the target's type.
-	type: Ghost
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Trick Room
-	description: The user creates a bizarre area in which slower Pokémon get to move first for five turns.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: -7
-	drain: False
-	effects: []
-Triple Axel
-	description: 
-	type: Ice
-	category: Physical
-	power: 20
-	accuracy: 90
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Triple Kick
-	description: A consecutive three-kick attack that becomes more powerful with each successive hit.
-	type: Fighting
-	category: Physical
-	power: 20
-	accuracy: 90
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Trop Kick
 	description: The user lands an intense kick of tropical origins on the target. This also lowers the target's Attack stat.
 	type: Grass
@@ -6269,17 +5049,6 @@ Trop Kick
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'atk': -1}, 'description': ''}]
-Trump Card
-	description: The fewer PP this move has, the greater its power.
-	type: Normal
-	category: Special
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Twineedle
 	description: The user damages the target twice in succession by jabbing it with two spikes. This may also poison the target (30% per hit).
 	type: Bug
@@ -6313,28 +5082,6 @@ Ultra Slicer
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'def': -1, 'spd': -1}, 'description': ''}]
-U-turn
-	description: After making its attack, the user rushes back to switch places with a party Pokémon in waiting.
-	type: Bug
-	category: Physical
-	power: 70
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Uproar
-	description: The user attacks in an uproar for three turns. During that time, no Pokémon can fall asleep.
-	type: Normal
-	category: Special
-	power: 90
-	accuracy: 100
-	target: randomNormal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['uproar'], 'description': ''}]
 Vacuum Wave
 	description: The user whirls its fists to send a wave of pure vacuum at the target. This move always goes first.
 	type: Fighting
@@ -6346,17 +5093,6 @@ Vacuum Wave
 	priority: 1
 	drain: False
 	effects: []
-Vaporize
-	description: The user superheats the target. This may also leave the target burned. This move is super effective on Water types.
-	type: Fire
-	category: Special
-	power: 70
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'brn', 'description': ''}]
 V-create
 	description: With a hot flame on its forehead, the user hurls itself at its target. This lowers the user's Defense, Sp. Def, and Speed stats.
 	type: Fire
@@ -6368,61 +5104,6 @@ V-create
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spe': -1, 'def': -1, 'spd': -1}, 'description': ''}]
-Veevee Volley
-	description: 
-	type: Normal
-	category: Physical
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Venom Drench
-	description: Opposing Pokémon are drenched in an odd poisonous liquid. This lowers the Attack, Sp. Atk, and Speed stats of a poisoned target.
-	type: Poison
-	category: Status
-	power: 0
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Venoshock
-	description: The user drenches the target in a special poisonous liquid. This move's power is doubled if the target is poisoned.
-	type: Poison
-	category: Special
-	power: 65
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Venus Chomp
-	description: The user chomps down on the target with a sticky jaw. Deals super effective damage vs. Bug-Type pokemon and traps the target.
-	type: Grass
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: [{'name': 'Trap', 'targets_self': False, 'chance': 100, 'details': None, 'description': 'Traps non-ghost types, preventing them from escaping.'}]
-Verdant Blessing
-	description: The user raises its staff to unleash the nature around it, empowering both the land and itself. User gains +1 Sp. Atk and Sp. Def if used in Grassy Terrain.
-	type: Grass
-	category: Special
-	power: 75
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Vine Whip
 	description: The target is struck with slender, whiplike vines to inflict damage.
 	type: Grass
@@ -6445,28 +5126,6 @@ Vise Grip
 	priority: 0
 	drain: False
 	effects: []
-Vital Throw
-	description: The user attacks last. In return, this throw move never misses.
-	type: Fighting
-	category: Physical
-	power: 70
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: -1
-	drain: False
-	effects: []
-Volt Switch
-	description: After making its attack, the user rushes back to switch places with a party Pokémon in waiting.
-	type: Electric
-	category: Special
-	power: 70
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Volt Tackle
 	description: The user electrifies itself and charges the target. This also damages the user quite a lot. This attack may leave the target with paralysis.
 	type: Electric
@@ -6478,17 +5137,6 @@ Volt Tackle
 	priority: 0
 	drain: False
 	effects: [{'name': 'Recoil', 'targets_self': True, 'chance': 100, 'details': 33.0, 'description': ''}, {'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'par', 'description': ''}]
-Wake-Up Slap
-	description: This attack inflicts big damage on a sleeping target. This also wakes the target up, however.
-	type: Fighting
-	category: Physical
-	power: 70
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Waterfall
 	description: The user charges at the target and may lower the target's Attack.
 	type: Water
@@ -6505,17 +5153,6 @@ Water Gun
 	type: Water
 	category: Special
 	power: 40
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Water Pledge
-	description: A column of water strikes the target. When combined with its fire equivalent, its power increases and a rainbow appears.
-	type: Water
-	category: Special
-	power: 80
 	accuracy: 100
 	target: normal
 	crit: 0
@@ -6544,39 +5181,6 @@ Water Shuriken
 	priority: 1
 	drain: False
 	effects: []
-Water Sport
-	description: The user soaks the battlefield with water. This weakens Fire-type moves for five turns.
-	type: Water
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Water Spout
-	description: The user spouts water to damage opposing Pokémon. The lower the user's HP, the lower the move's power.
-	type: Water
-	category: Special
-	power: 150
-	accuracy: 100
-	target: allAdjacentFoes
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Weather Ball
-	description: This attack move varies in power and type depending on the weather.
-	type: Normal
-	category: Special
-	power: 50
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Whirlpool
 	description: The user traps the target in a violent swirling whirlpool for four to five turns.
 	type: Water
@@ -6588,39 +5192,6 @@ Whirlpool
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
-Whirlwind
-	description: The target is blown away, and a different Pokémon is dragged out. In the wild, this ends a battle against a single Pokémon.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: normal
-	crit: 0
-	priority: -6
-	drain: False
-	effects: []
-Wicked Blow
-	description: 
-	type: Dark
-	category: Physical
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Wide Guard
-	description: The user and its allies are protected from wide-ranging attacks for one turn.
-	type: Rock
-	category: Status
-	power: 0
-	accuracy: 101
-	target: allySide
-	crit: 0
-	priority: 3
-	drain: False
-	effects: []
 Wild Charge
 	description: The user shrouds itself in electricity and smashes into its target. This also damages the user a little.
 	type: Electric
@@ -6654,17 +5225,6 @@ Wing Attack
 	priority: 0
 	drain: False
 	effects: []
-Wish
-	description: One turn after this move is used, the user's or its replacement's HP is restored by half the user's max HP.
-	type: Normal
-	category: Status
-	power: 0
-	accuracy: 101
-	target: self
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Withdraw
 	description: The user withdraws its body into its hard shell, raising its Defense stat.
 	type: Water
@@ -6676,17 +5236,6 @@ Withdraw
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'def': 1}, 'description': ''}]
-Wonder Room
-	description: The user creates a bizarre area in which Pokémon's Defense and Sp. Def stats are swapped for five turns.
-	type: Psychic
-	category: Status
-	power: 0
-	accuracy: 101
-	target: all
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Wood Hammer
 	description: The user slams its rugged body into the target to attack. This also damages the user quite a lot.
 	type: Grass
@@ -6709,17 +5258,6 @@ Work Up
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1, 'spa': 1}, 'description': ''}]
-Worry Seed
-	description: A seed that causes worry is planted on the target. It prevents sleep by making the target's Ability Insomnia.
-	type: Grass
-	category: Status
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Wrap
 	description: A long body, vines, or the like are used to wrap and squeeze the target for four to five turns.
 	type: Normal
@@ -6731,17 +5269,6 @@ Wrap
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
-Wring Out
-	description: The user powerfully wrings the target. The more HP the target has, the greater the move's power.
-	type: Normal
-	category: Special
-	power: 0
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 X-Scissor
 	description: The user slashes at the target by crossing its scythes or claws as if they were a pair of scissors. High crit ratio.
 	type: Bug
@@ -6764,17 +5291,6 @@ Yawn
 	priority: 0
 	drain: False
 	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['yawn'], 'description': ''}]
-Yorikiri
-	description: The user grips the foe and pushes them with a mighty force, and a different Pokémon is dragged out. In the wild, this ends a battle against a single Pokémon.
-	type: Fighting
-	category: Physical
-	power: 90
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: -6
-	drain: False
-	effects: []
 Zap Cannon
 	description: The user fires an electric blast like a cannon to inflict damage and cause paralysis.
 	type: Electric
@@ -6797,25 +5313,3 @@ Zen Headbutt
 	priority: 0
 	drain: False
 	effects: []
-Zing Zap
-	description: A strong electric blast crashes down on the target, giving it an electric shock. This may also make the target flinch.
-	type: Electric
-	category: Physical
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Zippy Zap
-	description: 
-	type: Electric
-	category: Physical
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 2
-	drain: False
-	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'evasion': 1}, 'description': ''}]

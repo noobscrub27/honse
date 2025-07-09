@@ -1,11 +1,9 @@
 from contextlib import redirect_stderr
-import pygame
 import random
 import math
 import numpy as np
-import honse_data
 import os
-from PIL import Image
+import honse_data
 from dataclasses import dataclass
 
 #may break things
@@ -284,7 +282,7 @@ class ImageParticle(RectParticle):
         pass
 
     def update_sprite(self):
-        if self.lived_lifetime > 0 and self.lived_lifetime % self.frame_length == 0 and self.image_index < len(self.game.particle_images[self.image_key])-1:
+        if self.lived_lifetime > 0 and self.lived_lifetime % self.frame_length == 0 and self.image_index < len(honse_data.PARTICLE_IMAGES["image"][self.image_key])-1:
             self.image_index += 1
 
     def update(self):
@@ -292,9 +290,13 @@ class ImageParticle(RectParticle):
         super().update()
 
     def draw(self):
+        if honse_data.PYGAME_ENABLED:
+            surface = honse_data.PARTICLE_IMAGES["surface"][self.image_key][self.image_index]
+        else:
+            surface = None
         self.game.draw_image(self.x, self.y,
-                             self.game.particle_surfaces[self.image_key][self.image_index],
-                             self.game.particle_images[self.image_key][self.image_index])
+                             surface,
+                             honse_data.PARTICLE_IMAGES["image"][self.image_key][self.image_index])
 
 class PunchParticle(ImageParticle):
     def __init__(self, game, x, y, options: ParticleOptions):
@@ -317,7 +319,7 @@ class PunchParticle(ImageParticle):
 
 class RazorLeafParticle(ImageParticle):
     def __init__(self, game, x, y, mirror_mode: bool, options: ParticleOptions):
-        key = "razor leaf transparent"
+        key = "razor leaf"
         index = 0
         self.mirror_mode = mirror_mode
         super().__init__(game, x, y, 0, 0, key, index, options)
@@ -333,7 +335,7 @@ class RazorLeafParticle(ImageParticle):
 
 class IceParticle(ImageParticle):
     def __init__(self, game, x, y, options: ParticleOptions):
-        key = "ice transparent"
+        key = "ice"
         index = 0
         x -= 50
         y -= 60
@@ -503,13 +505,26 @@ def large_impact_animation(game, x, y, **kwargs):
         )
         game.particle_spawner.add_particles(particle)
 
-def buff_animation(game, x, y, **kwargs):
-    follow_character = kwargs.get("follow_character", None)
-    buff_and_debuff_animation(game, x, y, 255, (50, 150), 25, True, follow_character)
 
-def debuff_animation(game, x, y, **kwargs):
-    follow_character = kwargs.get("follow_character", None)
-    buff_and_debuff_animation(game, x, y, 25, (50, 150), 255, False, follow_character)
+BUFF_COLORS = {
+    "r": 255,
+    "g": (50, 150),
+    "b": 25
+    }
+DEBUFF_COLORS = {
+    "r": 25,
+    "g": (50, 150),
+    "b": 255
+    }
+def buff_animation(game, x, y, follow_character=None):
+    buff_and_debuff_animation(game, x, y,
+                              BUFF_COLORS["r"], BUFF_COLORS["g"], BUFF_COLORS["b"],
+                              True, follow_character)
+
+def debuff_animation(game, x, y, follow_character=None):
+    buff_and_debuff_animation(game, x, y,
+                              DEBUFF_COLORS["r"], DEBUFF_COLORS["g"], DEBUFF_COLORS["b"],
+                              False, follow_character)
 
 def buff_spawner_animation(game, x, y, follow_character=None):
     buff_animation(game, x, y, follow_character=follow_character)
@@ -560,7 +575,6 @@ def buff_and_debuff_animation(game, x, y, r, g, b, travel_upward:bool, follow_ch
             follow_character=follow_character,
             follow_y_offset=starting_y_offset + starting_height_modifier,
             follow_x_offset=-(total_width//2)+(i*(particle_width+particle_spacing)))
-        
         # height ranges from 8 to 40. it grows until its peak at max_lifetime/2, and then shrinks
         x_growth = particle_width
         y_growth = lambda a, b: max(8, (8 + int(-128 * (b*b - b))))
@@ -837,7 +851,7 @@ def bolt_animation(game, x, y):
         )
     game.particle_spawner.add_particles(ImageParticle(game, x-30, y-88, 0, 0, "thunderbolt", 0, options))
 
-def barrier_animation(game, x, y, image_key="protect transparent", follow_character=None):
+def barrier_animation(game, x, y, image_key="protect", follow_character=None):
     options = ParticleOptions(
         lifetime=36,
         render_on_top=True,
@@ -901,3 +915,50 @@ def punch_spawner_animation(game, x, y):
         0, 0, 1, 0,
         0, 0, 0, 0,
         options))
+
+def status_animation(game, x, y, color, friendly, follow_character=None):
+    options = ParticleOptions(
+        lifetime=25,
+        follow_character=follow_character,
+        death_function=(status_animation_2, {"recursions_left": 1,
+                                             "friendly": friendly,
+                                             "follow_character": follow_character}),
+        render_on_top=True)
+    particle = CircleParticle(
+        game,
+        x, y,
+        0, 0,
+        80, -3,
+        color[0], color[1], color[2], 160,
+        options
+    )
+    game.particle_spawner.add_particles(particle)
+
+def status_animation_2(game, x, y, **kwargs):
+    friendly = kwargs["friendly"]
+    follow_character = kwargs["follow_character"]
+    if friendly:
+        colors = BUFF_COLORS
+    else:
+        colors = DEBUFF_COLORS
+    options = ParticleOptions(
+        lifetime=15,
+        follow_character=follow_character,
+        render_on_top=True)
+    for i in range(random.randint(8, 12)):
+        speed = random.randint(3, 6) * random.choice([-1, 1])
+        angle = random.randint(0, 359)
+        x_speed = math.sin(angle) * speed
+        y_speed = math.cos(angle) * speed
+        r = randomize_if_tuple(colors["r"])
+        g = randomize_if_tuple(colors["g"])
+        b = randomize_if_tuple(colors["b"])
+        particle = CircleParticle(
+            game,
+            x, y,
+            x_speed, y_speed,
+            8, 0, 
+            r, g, b, 127,
+            options
+        )
+        game.particle_spawner.add_particles(particle)

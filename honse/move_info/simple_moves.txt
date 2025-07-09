@@ -1,0 +1,484 @@
+Absorb
+Accelerock
+Acid
+Acid Armor
+Acid Spray
+Acrobatics
+Aerial Ace
+Aeroblast
+Agility
+Air Cutter
+Air Slash
+Amnesia
+Anchor Shot
+Ancient Power
+Aqua Jet
+Aqua Ring
+Aqua Tail
+Arm Thrust
+Aroma Bomb
+Aromatic Mist
+Astonish
+Attack Order
+Attract
+Aura Sphere
+Aura Wheel
+Aurora Beam
+Autotomize
+Baby-Doll Eyes
+Baneful Bunker
+Baku Punch
+Barrage
+Barrier
+Beak Cannon
+Bind
+Bite
+Blast Burn
+Blaze Kick
+Blizzard
+Blue Bites
+Blue Flare
+Body Slam
+Bolt Strike
+Bombs Away
+Bone Club
+Bonemerang
+Bone Rush
+Bone Twirl
+Boomburst
+Brave Bird
+Bubble
+Bubble Beam
+Bubble Prison
+Bug Bite
+Bug Buzz
+Bulk Up
+Bulldoze
+Bullet Punch
+Bullet Seed
+Burn Up
+Calm Mind
+Charge
+Charge Beam
+Charm
+Chatter
+Chilling Rime
+Chip Away
+Clamp
+Clanging Scales
+Close Combat
+Cloud Cannon
+Coil
+Comet Punch
+Confide
+Confuse Ray
+Confusion
+Constrict
+Core Enforcer
+Cosmic Power
+Cosmic Spin
+Cotton Guard
+Cotton Spore
+Crabhammer
+Cross Chop
+Cross Poison
+Crunch
+Crush Claw
+Cursed Roots
+Cut
+Dark Pulse
+Dark Void
+Darkest Lariat
+Dazzling Gleam
+Defend Order
+Defense Curl
+Delinquency
+Destiny Bond
+Detect
+Diamond Storm
+Disable
+Disarming Voice
+Discharge
+Dizzy Punch
+Double-Edge
+Double Hit
+Double Kick
+Double Slap
+Draco Meteor
+Dragon Ascent
+Dragon Breath
+Dragon Claw
+Dragon Dance
+Dragon Hammer
+Dragon Pulse
+Dragon Rush
+Draining Kiss
+Drain Punch
+Drill Peck
+Drill Run
+Dual Chop
+Dynamic Punch
+Earth Power
+Earthquake
+Eerie Impulse
+Egg Bomb
+Electrify
+Electroweb
+Ember
+Encore
+Endure
+Energy Ball
+Explosion
+Extrasensory
+Extreme Speed
+Fairy Wind
+Fake Tears
+Fallout
+Feather Dance
+Feint Attack
+Fiery Blossom
+Fiery Dance
+Fire Blast
+Fire Fang
+Fire Lash
+Fire Punch
+Fire Spin
+Flame Charge
+Flame Wheel
+Flamethrower
+Flare Blitz
+Flash Cannon
+Flatter
+Fleur Cannon
+Flutter Strike
+Focus Blast
+Focus Energy
+Follow Me
+Force Palm
+Foul Play
+Frenzy Plant
+Fury Attack
+Fury Swipes
+Gastro Slam
+Gear Grind
+Geyser Blast
+Giga Drain
+Giga Impact
+Glaciate
+Glare
+Grass Whistle
+Growl
+Grudge
+Gulch Kick
+Gunk Shot
+Gust
+Hammer Arm
+Harden
+Headbutt
+Head Charge
+Head Smash
+Heal Block
+Heartfall
+Heart Stamp
+Heat Wave
+Helping Hand
+High Horsepower
+Hone Claws
+Horn Attack
+Horn Leech
+Howl
+Hydro Cannon
+Hydro Pump
+Hyper Beam
+Hyper Fang
+Hyperspace Hole
+Hyper Voice
+Hypnosis
+Ice Beam
+Ice Fang
+Ice Hammer
+Ice Punch
+Ice Shard
+Icicle Crash
+Icicle Spear
+Icy Wind
+Incinerate
+Inferno
+Infestation
+Iron Defense
+Iron Head
+Iron Tail
+Judgment
+Karate Chop
+King's Shield
+Knock Off
+Land's Wrath
+Laser Focus
+Lava Plume
+Leafage
+Leaf Blade
+Leaf Storm
+Leaf Tornado
+Leech Life
+Leech Seed
+Leer
+Lick
+Lightning Kick
+Lightning Lance
+Light of Ruin
+Liquidation
+Lovely Kiss
+Low Sweep
+Lunatic Eyes
+Lunge
+Luster Purge
+Mach Punch
+Magical Leaf
+Magma Storm
+Magnet Bomb
+Magnet Rise
+Meditate
+Mega Drain
+Megahorn
+Mega Kick
+Mega Punch
+Metal Claw
+Metal Sound
+Meteor Mash
+Miracle Eye
+Mirror Shot
+Mist Ball
+Moonblast
+Moongeist Beam
+Mud Bomb
+Mud Shot
+Mud-Slap
+Muddy Water
+Multi-Attack
+Mystical Fire
+Nasty Plot
+Naughty-or-Nice
+Needle Arm
+Night Daze
+Night Slash
+Noble Roar
+Nuzzle
+Oblivion Wing
+Octazooka
+
+Odor Sleuth
+Ominous Wind
+One-Two Punch
+Origin Pulse
+Overheat
+Parabolic Charge
+Peck
+Petal Blizzard
+Petrify Pulse
+Pin Missile
+Plasmic Spin
+Play Nice
+Play Rough
+Pluck
+Poison Fang
+Poison Gas
+Poison Jab
+Poison Powder
+Poison Sting
+Poison Tail
+Pound
+Powder
+Powder Snow
+Power Gem
+Power-Up Punch
+Power Whip
+Precipice Blades
+Prehistoric Pulse
+Prismatic Laser
+Protect
+Psybeam
+Psychic
+Psycho Boost
+Psycho Cut
+Psyshock
+Psystrike
+Quick Attack
+Quiver Dance
+Radiant Mace
+Razor Leaf
+Razor Shell
+Red Rush
+Relic Song
+Roar of Time
+Rock Blast
+Rock Climb
+Rock Polish
+Rock Slide
+Rock Smash
+Rock Throw
+Rock Tomb
+Rock Wrecker
+Rolling Kick
+Sacred Fire
+Sacred Sword
+Sand Tomb
+Scald
+Scary Face
+Scratch
+Screech
+Searing Shot
+Secret Sword
+Seed Bomb
+Seed Flare
+Shadow Ball
+Shadow Blast
+Shadow Bolt
+Shadow Bone
+Shadow Break
+Shadow Cascade
+Shadow Charge
+Shadow Chew
+Shadow Chill
+Shadow Cinder
+Shadow Claw
+Shadow Combust
+Shadow Dance
+Shadow Destruction
+Shadow Detonation
+Shadow Devastation
+Shadow Devour
+Shadow Dissolve
+Shadow Down
+Shadow Duplicity
+Shadow End
+Shadow Fire
+Shadow Frost
+Shadow Fumes
+Shadow Hubris
+Shadow Intensify
+Shadow Jolt
+Shadow Mist
+Shadow Panic
+Shadow Phoenix
+Shadow Press
+Shadow Punch
+Shadow Rainbow
+Shadow Rave
+Shadow Rush
+Shadow Scheme
+Shadow Seed
+Shadow Shackle
+Shadow Slasher
+Shadow Sneak
+Shadow Spell
+Shadow Sprint
+Shadow Stare
+Shadow Storm
+Shadow Threat
+Shadow Titan
+Shadow Trance
+Shadow Vampirism
+Shadow Velocity
+Shadow Venom
+Shadow Volley
+Shadow Wall
+Shadow Wave
+Shadow Whip
+Sharpen
+Shell Smash
+Shift Gear
+Shock Wave
+Signal Beam
+Silver Wind
+Sing
+Sky Uppercut
+Slam
+Slash
+Sleep Powder
+Sludge
+Sludge Bomb
+Sludge Wave
+Smart Strike
+Smog
+Smokescreen
+Snarl
+Sunshine Dance
+Spacial Rend
+Spark
+Sparkling Aria
+Spider Web
+Spike Cannon
+Spiky Shield
+Spirit Shackle
+Spore
+Spore Slash
+Spotlight
+Steam Eruption
+Steamroller
+Steel Wing
+Stockpile
+Stomp
+Stone Edge
+Strength
+String Shot
+Struggle Bug
+Stun Spore
+Submission
+Substitute
+Sugar Slam
+Sunsteel Strike
+Superpower
+Supersonic
+Surf
+Swagger
+Sweet Kiss
+Sweet Scent
+Swift
+Swords Dance
+Sword Stream
+Tackle
+Tail Glow
+Tail Slap
+Tail Whip
+Take Down
+Taunt
+Tearful Look
+Techno Blast
+Teeter Dance
+Telekinesis
+Throat Chop
+Thunderbolt
+Thunder Crash
+Thunder Fang
+Thunder Punch
+Thunder Shock
+Thunder Wave
+Tickle
+Torment
+Toxic Thread
+Tri Attack
+Trop Kick
+Twineedle
+Twister
+Ultra Slicer
+Vacuum Wave
+V-create
+Vine Whip
+Vise Grip
+Volt Tackle
+Waterfall
+Water Gun
+Water Pulse
+Water Shuriken
+Whirlpool
+Wild Charge
+Will-O-Wisp
+Wing Attack
+Withdraw
+Wood Hammer
+Work Up
+Wrap
+X-Scissor
+Yawn
+Zap Cannon
+Zen Headbutt

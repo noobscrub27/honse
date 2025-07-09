@@ -1,0 +1,12 @@
+{
+	"Acupressure": {
+		"can_hit_allies": true,
+		"target": "user",
+		"spread_radius": "default"
+	},
+	"Howl": {
+		"can_hit_allies": true,
+		"target": "user",
+		"spread_radius": "default"
+	}
+}

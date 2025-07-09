@@ -86,17 +86,6 @@ Avalanche
 	priority: -4
 	drain: False
 	effects: []
-Baku Punch
-	description: The target is punched with a strange, dreamlike punch. This move does special damage to the target.
-	type: Psychic
-	category: Physical
-	power: 85
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Baton Pass
 	description: The user switches places with a party Pokémon in waiting and passes along any stat changes.
 	type: Normal
@@ -174,6 +163,17 @@ Biddy Bud
 	priority: 0
 	drain: False
 	effects: []
+Bide
+	description: The user endures attacks for two turns, then strikes back to cause double the damage taken.
+	type: Normal
+	category: Physical
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 1
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['bide'], 'description': ''}]
 Block
 	description: The user blocks the target's way with arms spread wide to prevent escape.
 	type: Normal
@@ -245,17 +245,6 @@ Cat Burglary
 	type: Normal
 	category: Physical
 	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Chip Away
-	description: Looking for an opening, the user strikes consistently. The target's stat changes don't affect this attack's damage.
-	type: Normal
-	category: Physical
-	power: 70
 	accuracy: 100
 	target: normal
 	crit: 0
@@ -394,17 +383,6 @@ Curse
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1, 'def': 1, 'spe': -1}, 'description': ''}, {'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['curse'], 'description': ''}]
-Darkest Lariat
-	description: The user swings both arms and hits the target. The target's stat changes don't affect this attack's damage.
-	type: Dark
-	category: Physical
-	power: 85
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Defog
 	description: A strong wind blows away the target's barriers such as Reflect or Light Screen. This also lowers the target's evasiveness.
 	type: Flying
@@ -779,17 +757,6 @@ Forest's Curse
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 100, 'details': {'spe': -1}, 'description': ''}]
-Foul Play
-	description: The user turns the target's power against it. The higher the target's Attack stat, the greater the move's power.
-	type: Dark
-	category: Physical
-	power: 95
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Freeze-Dry
 	description: The user rapidly cools the target. This may also leave the target frozen. This move is super effective on Water types.
 	type: Ice
@@ -1279,17 +1246,6 @@ Last Resort
 	type: Normal
 	category: Physical
 	power: 140
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Lightning Lance
-	description: The user pierces the foe with the speed of lightning. The target's stat changes don't affect this attack's damage.
-	type: Electric
-	category: Physical
-	power: 85
 	accuracy: 100
 	target: normal
 	crit: 0
@@ -1912,28 +1868,6 @@ Psycleaner
 	priority: 0
 	drain: False
 	effects: [{'name': 'Boosts', 'targets_self': False, 'chance': 20, 'details': {'evasion': -1}, 'description': ''}]
-Psyshock
-	description: The user materializes an odd psychic wave to attack the target. This attack does physical damage.
-	type: Psychic
-	category: Special
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Psystrike
-	description: The user materializes an odd psychic wave to attack the target. This attack does physical damage.
-	type: Psychic
-	category: Special
-	power: 100
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Psywave
 	description: The target is attacked with an odd psychic wave. The attack varies in intensity.
 	type: Psychic
@@ -2051,6 +1985,17 @@ Recover
 	power: 0
 	accuracy: 101
 	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Reflect
+	description: A wondrous wall of light is put up to reduce damage from physical attacks for five turns.
+	type: Psychic
+	category: Status
+	power: 0
+	accuracy: 101
+	target: allySide
 	crit: 0
 	priority: 0
 	drain: False
@@ -2225,17 +2170,6 @@ Round
 	type: Normal
 	category: Special
 	power: 60
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
-Sacred Sword
-	description: The user attacks by slicing with a long horn. The target's stat changes don't affect this attack's damage.
-	type: Fighting
-	category: Physical
-	power: 90
 	accuracy: 100
 	target: normal
 	crit: 0
@@ -2463,17 +2397,6 @@ Shadow Doomsday
 	priority: 0
 	drain: False
 	effects: []
-Shadow Duplicity
-	description: The user uses malicious energy to turn the foe's power against it. The higher the target's Sp. Attack stat, the greater the move's power.
-	type: Shadow
-	category: Special
-	power: 80
-	accuracy: 100
-	target: normal
-	crit: 0
-	priority: 0
-	drain: False
-	effects: []
 Shadow Evoboost
 	description: The user submits itself to shadows that unlock its many potentials and grant it +2 in all stats. Cannot be used twice in a row.
 	type: Shadow
@@ -2650,4 +2573,1267 @@ Shadow Haunting
 	priority: 0
 	drain: True
 	effects: []
-
+Shadow Hold
+	description: The user constricts the target in a grip of densely packed shadows, trapping and damaging it for 4-5 turns.
+	type: Shadow
+	category: Physical
+	power: 40
+	accuracy: 95
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
+Shadow Hurl
+	description: The user's phantom hand chucks the target back at its party, forcing it to switch. Usually moves last.
+	type: Shadow
+	category: Physical
+	power: 65
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: -6
+	drain: False
+	effects: []
+Shadow Inversion
+	description: The user commands dark forces to invert the target's stat changes.
+	type: Shadow
+	category: Special
+	power: 60
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Laser
+	description: The user injects darkness into air electrons. The negative overflow raises its Sp Attack by 1 stage and shoots a blacklight ray at the target the following turn.
+	type: Shadow
+	category: Special
+	power: 90
+	accuracy: 95
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Meld
+	description: The user employs a dark energy to average its Def and Sp. Def stats with those of the target.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Mirage
+	description: The user constructs a terrifying illusion to manufacture fear within the target. Deals damage based on the user's level.
+	type: Shadow
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Monsoon
+	description: The user lets loose a current of liquid shadows, summoning heavy rain after attacking.
+	type: Shadow
+	category: Special
+	power: 90
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Moon
+	description: A blackened satellite heals the user's HP by 50% and boosts its Attack.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1}, 'description': ''}]
+Shadow Moss
+	description: Blackened foliage heals the user's HP by 50% and boosts its Sp. Defense.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spd': 1}, 'description': ''}]
+Shadow Pivot
+	description: After quickly tackling the opponent, the user vanishes into the shadows and switches to a different Pokémon.
+	type: Shadow
+	category: Physical
+	power: 65
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Punish
+	description: The more the target has powered up with stat changes, the greater the move's power. 55 Base Power + 30 per boost; No max power.
+	type: Shadow
+	category: Physical
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Rage
+	description: The user lets out all its frustration in an attack. Doubles in power if the user is affected by a status condition.
+	type: Shadow
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Recruit
+	description: The user sends out a corruptive force to manipulate the foe into gaining the Shadow type.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Requital
+	description: Getting revenge on the target, the user forces darkness into their body with much greater power. Deals 1.5x damage of last attack.
+	type: Shadow
+	category: Physical
+	power: 0
+	accuracy: 100
+	target: scripted
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Reset
+	description: The user sends out a thick darkness that overwhelms the target's memory, damaging it and causing it to forget all stat changes.
+	type: Shadow
+	category: Special
+	power: 50
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Robbery
+	description: The user steals the target's attack boost in a cunning trap before dealing damage. Bypasses Substitute.
+	type: Shadow
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Roulette
+	description: The user's possessed heart calls upon the void, dealing damage with a random base power.
+	type: Shadow
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Shatter
+	description: A shadowy chop that is so malicious that it will destroy screens before attacking.
+	type: Shadow
+	category: Physical
+	power: 75
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Shed
+	description: Darkness floods the battlefield, removing Screens, Hazards, Terrains, and lowering the target's evasion by 2.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Shuffle
+	description: The user sends out a shadowy whirlwind to force the target to switch.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: -6
+	drain: False
+	effects: []
+Shadow Signal
+	description: The user emits a corrupted frequency to embolden all Shadow-types in play, raising their Attack, Sp. Attack, and Speed by 1 stage; 2 stages in Shadow Sky.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Siren
+	description: All Pokémon that hear this funeral dirge echoing in the darkness faint in three turns, unless they switch out of battle.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Sky
+	description: The user blackens the atmosphere, creating a shadowy weather that batters non-Shadow pokemon every turn and boosts the power of Shadow moves.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Slander
+	description: The user shouts a deep-cutting insult to the target before switching out and lowering the target's Atk and Sp. Atk by 1 stage.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Snipe
+	description: The user shoots a black bullet at the target, raising its Attack by 3 stages if it KOs it.
+	type: Shadow
+	category: Physical
+	power: 50
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Sorcery
+	description: Doubles in power if the foe is affected by a status condition.
+	type: Shadow
+	category: Special
+	power: 65
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Spikes
+	description: The user solidifies shadows into sharp spikes and scatters them around the target and its allies.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: foeSide
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Sprites
+	description: Corruptive pixies heal the user's HP by 50% and boost a random stat.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Squeeze
+	description: The user materializes a shadowy tentacle around the target to choke it. The more HP the target has, the greater this move's power. Max 100 power.
+	type: Shadow
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Stratoslam
+	description: The user draws in corrupted clouds and tackles the target, clearing any active weather.
+	type: Shadow
+	category: Physical
+	power: 80
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Sun
+	description: A blackened star heals the user's HP by 50% and boosts its Sp. Attack.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'spa': 1}, 'description': ''}]
+Shadow Swap
+	description: The user manipulates amorphous shadows to hide and switch its item with its opponent's.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Transform
+	description: The user immerses itself in shadows to transform into a Shadow-Type doppelganger of the target and gain 1 stage in every stat.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Boosts', 'targets_self': True, 'chance': 100, 'details': {'atk': 1, 'def': 1, 'spa': 1, 'spd': 1, 'spe': 1}, 'description': ''}]
+Shadow Trip
+	description: The user bursts forth an ominous root around the target and whips its feet, causing it to fall. Deals more damage the heavier the target is.
+	type: Shadow
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Vengeance
+	description: The user obtains retribution against the foe. Deals more damage the lower the HP of the user.
+	type: Shadow
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Wheel
+	description: The user whirls shadows around itself while spinning and hitting the target. This removes any hazards, leech seed, or trapping moves from the user.
+	type: Shadow
+	category: Physical
+	power: 60
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Whiteout
+	description: The user calls forth an avalanche of subzero shadows, summoning hail after attacking.
+	type: Shadow
+	category: Special
+	power: 90
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Wreckage
+	description: The user rampages uncontrollably, destroying everything around it. Clears the field of terrain and screens.
+	type: Shadow
+	category: Physical
+	power: 75
+	accuracy: 100
+	target: allAdjacent
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shadow Wyrm
+	description: Shadow dragons of myth swarm around the user to heal its HP by 75%.
+	type: Shadow
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sheer Cold
+	description: The target faints instantly. It's less likely to hit the target if it's used by Pokémon other than Ice types.
+	type: Ice
+	category: Special
+	power: 0
+	accuracy: 30
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Shell Trap
+	description: The user sets a shell trap. If the user is hit by a contact move, the trap will explode and inflict damage on the opposing Pokémon and burn it.
+	type: Fire
+	category: Special
+	power: 150
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: -3
+	drain: False
+	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'brn', 'description': ''}]
+Shore Up
+	description: The user regains up to half of its max HP. It restores more HP in a sandstorm.
+	type: Ground
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Silk Snare
+	description: Changes Kirlia's forme. In Stalker forme, damages and traps the foe for 4-5 turns. In Weaver forme, protects Kirlia and inflicts -2 speed to any contact move.
+	type: Bug
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['partiallytrapped'], 'description': ''}]
+Sketch
+	description: It enables the user to permanently learn the move last used by the target. Once used, Sketch disappears.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Skull Bash
+	description: The user tucks in its head to raise its Defense stat on the first turn, then rams the target on the next turn.
+	type: Normal
+	category: Physical
+	power: 130
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sky Attack
+	description: A second-turn attack move where critical hits land more easily. This may also make the target flinch.
+	type: Flying
+	category: Physical
+	power: 140
+	accuracy: 90
+	target: any
+	crit: 1
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 30, 'details': ['flinch'], 'description': ''}]
+Sky Drop
+	description: The user takes the target into the sky, then drops it during the next turn. The target cannot attack while in the sky.
+	type: Flying
+	category: Physical
+	power: 60
+	accuracy: 100
+	target: any
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Slack Off
+	description: The user slacks off, restoring its own HP by up to half of its max HP.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sleep Talk
+	description: While it is asleep, the user randomly uses one of the moves it knows.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Smack Down
+	description: The user throws a stone or similar projectile to attack an opponent. A flying Pokémon will fall to the ground when it's hit.
+	type: Rock
+	category: Physical
+	power: 50
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['smackdown'], 'description': ''}]
+Smelling Salts
+	description: This attack's power is doubled when used on a target with paralysis. This also cures the target's paralysis, however.
+	type: Normal
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Snatch
+	description: The user steals the effects of any attempts to use a healing or stat-changing move.
+	type: Dark
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 4
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['snatch'], 'description': ''}]
+Snore
+	description: This attack can be used only if the user is asleep. The harsh noise may also make the target flinch.
+	type: Normal
+	category: Special
+	power: 50
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 30, 'details': ['flinch'], 'description': ''}]
+Snuggle Bug
+	description: The user cuddles with the target using its comfy boosts. The more the user's stats are raised, the greater the move's power.
+	type: Bug
+	category: Physical
+	power: 20
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Soak
+	description: The user shoots a torrent of water at the target and changes the target's type to Water.
+	type: Water
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Soft-Boiled
+	description: The user restores its own HP by up to half of its max HP.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Solar Beam
+	description: In this two-turn attack, the user gathers light, then blasts a bundled beam on the next turn.
+	type: Grass
+	category: Special
+	power: 120
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Solar Blade
+	description: In this two-turn attack, the user gathers light and fills a blade with the light's energy, attacking the target on the next turn.
+	type: Grass
+	category: Physical
+	power: 125
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sonic Boom
+	description: The target is hit with a destructive shock wave that always inflicts 20 HP damage.
+	type: Normal
+	category: Special
+	power: 0
+	accuracy: 90
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sparkling Water
+	description: The user shoots a stream of crystal clear water. All stat changes are returned to normal.
+	type: Water
+	category: Special
+	power: 85
+	accuracy: 101
+	target: allAdjacent
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Spectral Thief
+	description: The user hides in the target's shadow, steals the target's stat boosts, and then attacks.
+	type: Ghost
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Speed Swap
+	description: The user exchanges Speed stats with the target.
+	type: Psychic
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Spikes
+	description: The user lays a trap of spikes at the opposing team's feet. The trap hurts Pokémon that switch into battle.
+	type: Ground
+	category: Status
+	power: 0
+	accuracy: 101
+	target: foeSide
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Spit Up
+	description: The power stored using the move Stockpile is released at once in an attack. The more power is stored, the greater the move's power. 120 power per Stockpile.
+	type: Normal
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Spite
+	description: The user unleashes its grudge on the move last used by the target by cutting 4 PP from it.
+	type: Ghost
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Splash
+	description: The user just flops and splashes around to no effect at all...
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Stealth Rock
+	description: The user lays a trap of levitating stones around the opposing team. The trap hurts opposing Pokémon that switch into battle.
+	type: Rock
+	category: Status
+	power: 0
+	accuracy: 101
+	target: foeSide
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sticky Web
+	description: The user weaves a sticky net around the opposing team, which lowers their Speed stat upon switching into battle.
+	type: Bug
+	category: Status
+	power: 0
+	accuracy: 101
+	target: foeSide
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Stomping Tantrum
+	description: Driven by frustration, the user attacks the target. If the user's previous move has failed, the power of this move doubles.
+	type: Ground
+	category: Physical
+	power: 75
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Stored Power
+	description: The user attacks the target with stored power. The more the user's stats are raised, the greater the move's power.
+	type: Psychic
+	category: Special
+	power: 20
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Storm Throw
+	description: The user strikes the target with a fierce blow. This attack always results in a critical hit.
+	type: Fighting
+	category: Physical
+	power: 60
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Strength Sap
+	description: The user restores its HP by the same amount as the target's Attack stat. It also lowers the target's Attack stat.
+	type: Grass
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Stripe Style
+	description: This attack's effects vary depending on Basculin's stripe color. Red Stripe Basculin will use Red Rush, and Blue Striped Basculin will use Blue Bites.
+	type: Water
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sucker Punch
+	description: This move enables the user to attack first. This move fails if the target is not readying an attack.
+	type: Dark
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 1
+	drain: False
+	effects: []
+Sunny Day
+	description: The user intensifies the sun for five turns, powering up Fire-type moves. It lowers the power of Water-type moves.
+	type: Fire
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Super Fang
+	description: The user chomps hard on the target with its sharp front fangs. This cuts the target's HP in half.
+	type: Normal
+	category: Physical
+	power: 0
+	accuracy: 90
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Swallow
+	description: The power stored using the move Stockpile is absorbed by the user to heal its HP. Storing more power heals more HP- 50, 75, or 100 depending on Stockpiles.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Sweep Up
+	description: The user sweeps the space around it in a hurried manner. Clears all hazards on the field and clears terrain.
+	type: Normal
+	category: Physical
+	power: 40
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Synchronoise
+	description: The user uses an odd shock wave to attack anything around it. Deals double damage to Pokémon that share a typing with the user.
+	type: Psychic
+	category: Special
+	power: 65
+	accuracy: 100
+	target: allAdjacent
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Synthesis
+	description: The user restores its own HP. The amount of HP regained varies with the weather.
+	type: Grass
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Tailwind
+	description: The user whips up a turbulent whirlwind that ups the Speed stat of the user and its allies for four turns.
+	type: Flying
+	category: Status
+	power: 0
+	accuracy: 101
+	target: allySide
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Teleport
+	description: Use it to flee from any wild Pokémon.
+	type: Psychic
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: -6
+	drain: False
+	effects: []
+Thief
+	description: The user attacks and steals the target's held item simultaneously. The user can't steal anything if it already holds an item.
+	type: Dark
+	category: Physical
+	power: 60
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Thousand Arrows
+	description: This move also hits opposing Pokémon that are in the air. Those Pokémon are knocked down to the ground.
+	type: Ground
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': False, 'chance': 100, 'details': ['smackdown'], 'description': ''}]
+Thousand Waves
+	description: The user attacks with a wave that crawls along the ground. Those hit can't flee from battle.
+	type: Ground
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Thrash
+	description: The user rampages and attacks for two to three turns. The user then becomes confused.
+	type: Normal
+	category: Physical
+	power: 120
+	accuracy: 100
+	target: randomNormal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['lockedmove'], 'description': ''}]
+Thunder
+	description: A wicked thunderbolt is dropped on the target to inflict damage. This may also leave the target with paralysis.
+	type: Electric
+	category: Special
+	power: 110
+	accuracy: 70
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 30, 'details': 'par', 'description': ''}]
+Topsy-Turvy
+	description: All stat changes affecting the target turn topsy-turvy and become the opposite of what they were.
+	type: Dark
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Toxic
+	description: A move that leaves the target badly poisoned. Its poison damage worsens every turn. Infiltrates and non-reflectable in Miasma.
+	type: Poison
+	category: Status
+	power: 0
+	accuracy: 90
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 100, 'details': 'tox', 'description': ''}]
+Toxic Spikes
+	description: The user lays a trap of poison spikes at the feet of the opposing team. The spikes will poison opposing Pokémon that switch into battle.
+	type: Poison
+	category: Status
+	power: 0
+	accuracy: 101
+	target: foeSide
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Transform
+	description: The user transforms into a copy of the target right down to having the same move set.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Trick-or-Treat
+	description: The user takes the target trick-or-treating. This adds Ghost type to the target's type.
+	type: Ghost
+	category: Status
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Trick Room
+	description: The user creates a bizarre area in which slower Pokémon get to move first for five turns.
+	type: Psychic
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: -7
+	drain: False
+	effects: []
+Triple Kick
+	description: A consecutive three-kick attack that becomes more powerful with each successive hit.
+	type: Fighting
+	category: Physical
+	power: 20
+	accuracy: 90
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+U-turn
+	description: After making its attack, the user rushes back to switch places with a party Pokémon in waiting.
+	type: Bug
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Uproar
+	description: The user attacks in an uproar for three turns. During that time, no Pokémon can fall asleep.
+	type: Normal
+	category: Special
+	power: 90
+	accuracy: 100
+	target: randomNormal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Volatile Status', 'targets_self': True, 'chance': 100, 'details': ['uproar'], 'description': ''}]
+Vaporize
+	description: The user superheats the target. This may also leave the target burned. This move is super effective on Water types.
+	type: Fire
+	category: Special
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Nonvolatile Status', 'targets_self': False, 'chance': 10, 'details': 'brn', 'description': ''}]
+Venom Drench
+	description: Opposing Pokémon are drenched in an odd poisonous liquid. This lowers the Attack, Sp. Atk, and Speed stats of a poisoned target.
+	type: Poison
+	category: Status
+	power: 0
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Venoshock
+	description: The user drenches the target in a special poisonous liquid. This move's power is doubled if the target is poisoned.
+	type: Poison
+	category: Special
+	power: 65
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Venus Chomp
+	description: The user chomps down on the target with a sticky jaw. Deals super effective damage vs. Bug-Type pokemon and traps the target.
+	type: Grass
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: [{'name': 'Trap', 'targets_self': False, 'chance': 100, 'details': None, 'description': 'Traps non-ghost types, preventing them from escaping.'}]
+Verdant Blessing
+	description: The user raises its staff to unleash the nature around it, empowering both the land and itself. User gains +1 Sp. Atk and Sp. Def if used in Grassy Terrain.
+	type: Grass
+	category: Special
+	power: 75
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Vital Throw
+	description: The user attacks last. In return, this throw move never misses.
+	type: Fighting
+	category: Physical
+	power: 70
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: -1
+	drain: False
+	effects: []
+Volt Switch
+	description: After making its attack, the user rushes back to switch places with a party Pokémon in waiting.
+	type: Electric
+	category: Special
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Wake-Up Slap
+	description: This attack inflicts big damage on a sleeping target. This also wakes the target up, however.
+	type: Fighting
+	category: Physical
+	power: 70
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Water Pledge
+	description: A column of water strikes the target. When combined with its fire equivalent, its power increases and a rainbow appears.
+	type: Water
+	category: Special
+	power: 80
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Water Sport
+	description: The user soaks the battlefield with water. This weakens Fire-type moves for five turns.
+	type: Water
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Water Spout
+	description: The user spouts water to damage opposing Pokémon. The lower the user's HP, the lower the move's power.
+	type: Water
+	category: Special
+	power: 150
+	accuracy: 100
+	target: allAdjacentFoes
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Weather Ball
+	description: This attack move varies in power and type depending on the weather.
+	type: Normal
+	category: Special
+	power: 50
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Whirlwind
+	description: The target is blown away, and a different Pokémon is dragged out. In the wild, this ends a battle against a single Pokémon.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: normal
+	crit: 0
+	priority: -6
+	drain: False
+	effects: []
+Wide Guard
+	description: The user and its allies are protected from wide-ranging attacks for one turn.
+	type: Rock
+	category: Status
+	power: 0
+	accuracy: 101
+	target: allySide
+	crit: 0
+	priority: 3
+	drain: False
+	effects: []Wish
+	description: One turn after this move is used, the user's or its replacement's HP is restored by half the user's max HP.
+	type: Normal
+	category: Status
+	power: 0
+	accuracy: 101
+	target: self
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Wonder Room
+	description: The user creates a bizarre area in which Pokémon's Defense and Sp. Def stats are swapped for five turns.
+	type: Psychic
+	category: Status
+	power: 0
+	accuracy: 101
+	target: all
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Wring Out
+	description: The user powerfully wrings the target. The more HP the target has, the greater the move's power.
+	type: Normal
+	category: Special
+	power: 0
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []
+Yorikiri
+	description: The user grips the foe and pushes them with a mighty force, and a different Pokémon is dragged out. In the wild, this ends a battle against a single Pokémon.
+	type: Fighting
+	category: Physical
+	power: 90
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: -6
+	drain: False
+	effects: []
+Zing Zap
+	description: A strong electric blast crashes down on the target, giving it an electric shock. This may also make the target flinch.
+	type: Electric
+	category: Physical
+	power: 80
+	accuracy: 100
+	target: normal
+	crit: 0
+	priority: 0
+	drain: False
+	effects: []

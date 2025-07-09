@@ -1,43 +1,43 @@
 from dataclasses import dataclass
-from numpy.random import f
 import pygame
-import random
 import math
-import numpy as np
 import os
 from PIL import Image, ImageColor, ImageFont, ImageDraw
-import colorsys
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-STAT_BUFF_DURATION = 900
+MAX_SPAWN_ATTEMPTS = 1000
+class SpawnError(Exception):
+    def __init__(self, pokemon_name):
+        self.message = f"Failed to spawn {pokemon_name}. (attempt limit reached)"
+    def __str__(self):
+        return self.message
+
 MAX_EFFECT_VALUE = 1800
-
-COLLISION_INTANGIBILITY = 30
-FRAMES_PER_SECOND = 60
-FRAME_LENGTH_SECONDS = 1 / FRAMES_PER_SECOND
-
 SPEED_CAP = 30
 
-FONT_NAME = os.path.join("fonts", "cascadia-code", "Cascadia.ttf")
-FONT_NAME = os.path.join("fonts", "pokemon-gen-4-regular", "pokemon-gen-4-regular.otf")
-
-FONT_NAME = os.path.join("fonts", "pokemon-bw", "pokemon-bw.otf")
-FONT_NAME = os.path.join("fonts", "pokemon-xyoras", "pokemon-xyoras.otf")
-FONT_NAME = os.path.join("fonts", "pokemon-gen-4-fullwidth", "pokemon-gen-4-fullwidth.otf")
 # this holds all of the fonts
-# font name: {font_size: [pygame_object, PIL_object]}
 fonts = {}
 TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
-
-BASE_WIDTH = 1920
-BASE_HEIGHT = 1080
-
-SUDDEN_DEATH_FRAMES = 7200
-
+SUDDEN_DEATH_FRAMES = 2.5 * 60 * 60
+SOUNDS = {}
+PARTICLE_IMAGES = {
+    "image": {}, "surface": {}
+    }
+STATUS_IMAGES = {
+    "image": {}, "surface": {}
+    }
 # equates to 24 hours for when i want things to last indefinitely
 A_LOT_OF_FRAMES = 5184000
+
+# because the aim of this project is to be integrated with a discord bot, there needs to be an option to run this in a thread-safe way
+# however, pygame is not thread-safe
+# as a result, pygame will not be enabled if this is being run as part of a different program
+# this way, i can test with pygame on to see immediate results
+# in honse.py if __name__ == "__main__" this is set to true
+PYGAME_ENABLED = False
+
 # the number of frames a status icon will display before the next effect is displayed
 STATUS_ICON_BLINK_LENGTH = 90
 
@@ -69,16 +69,15 @@ NATURES = {
     "Quirky": {"ATK": 1, "DEF": 1, "SPA": 1, "SPD": 1, "SPE": 1},
     }
 
-
 def image_to_surface(image):
     return pygame.image.fromstring(
         image.tobytes(), image.size, image.mode
     ).convert_alpha()
 
-def alpha_change(image, alpha_percent):
+def alpha_change(image, opacity):
     r, g, b, a = image.split()
     return Image.merge(
-        "RGBA", (r, g, b, a.point(lambda x: (x * alpha_percent) // 100))
+        "RGBA", (r, g, b, a.point(lambda x: (x * opacity) // 100))
     )
 
 def hue_shift(image, shift_amount):
@@ -182,8 +181,9 @@ def draw_health_bar(game, x, y, width, height, value, label_text, label_width):
     else:
         light_color = BAR_COLORS["critical_hp_light"]
         dark_color = BAR_COLORS["critical_hp_dark"]
-    draw_bar(game, health_bar_x, bar_light_y, health_bar_width, bar_light_height, value, light_color, True)
-    draw_bar(game, health_bar_x, bar_dark_y, health_bar_width, bar_dark_height, value, dark_color, True)
+    if value > 0:
+        draw_bar(game, health_bar_x, bar_light_y, health_bar_width, bar_light_height, value, light_color, True)
+        draw_bar(game, health_bar_x, bar_dark_y, health_bar_width, bar_dark_height, value, dark_color, True)
     text_x = x + ((label_width - label_text.size[0]) // 2)
     text_y = y + ((height - label_text.size[1]) // 2)
     label_text.draw(text_x, text_y)
@@ -199,35 +199,58 @@ def draw_move_bar(game, x, y, width, height, value, label_text, label_x, locked=
         color = BAR_COLORS["move_cooldown"]
         draw_bar(game, x, y, width, height, 1, BAR_COLORS["white_bg_transparent"])
     draw_bar(game, x, y, width, height, value, color)
-    label_text.draw(label_x, y)
+    if type(label_text) is HonseText:
+        label_text.draw(label_x, y)
+
+@dataclass
+class UIElementOptions:
+    width: int = 240
+    status_padding: int = 5
+    name_gradient_size: int = 20
+    hp_bar_height: int = 42
+    hp_label_width: int = 0
+    show_moves: bool = True
+    move_bar_height: int = 20
+    move_bar_padding: int = 3
+    move_name_padding: int = 3
+    left_move_x: int = 0
+    y_padding: int = 4
+    name_font_size: int = 20
+    move_font_size: int = 16
+    hp_font_size: int = 16
 
 class UIElement:
-    width = 240
     status_size = 40
-    status_padding = 5
-    status1_x = width - status_size
-    status2_x = width - (2 * status_size) - status_padding
-    name_gradient_size = 20
-    max_name_length_pixels = status2_x - status_padding - name_gradient_size
-    status1_x = width - 40
-    status2_x = width - 85
-    hp_bar_height = 42
-    hp_label_width = 0
-    move_bar_height = 20
-    move_name_padding = 10
-    move_bar_width = (width - (2*move_name_padding)) // 2
-    left_move_x = 0
-    right_move_x = width // 2
-    y_padding = 4
-    name_font_size = 20
-    move_font_size = 16
-    hp_font_size = 16
-    height = status_size + hp_bar_height + move_bar_height + (y_padding * 4)
-    def __init__(self, x, y, character):
+    def __init__(self, options: UIElementOptions, x:int, y:int, character):
         self.x = x
         self.y = y
         self.game = character.game
         self.character = character
+        self.width = options.width
+        self.status_padding = options.status_padding
+        self.status1_x = self.width - self.status_size
+        self.status2_x = self.width - (2 * self.status_size) - self.status_padding
+        self.name_gradient_size = options.name_gradient_size
+        self.max_name_length_pixels = self.status2_x - self.status_padding - self.name_gradient_size
+        self.status1_x = self.width - self.status_size
+        self.status2_x = self.width - (2 * self.status_size) - self.status_padding
+        self.hp_bar_height = options.hp_bar_height
+        self.hp_label_width = options.hp_label_width
+        self.move_bar_height = options.move_bar_height
+        self.move_name_padding = options.move_name_padding
+        self.move_bar_width = (self.width - (2*options.move_bar_padding)) // 2
+        self.max_move_name_length_pixels = self.move_bar_width - (2*options.move_bar_padding)
+        self.left_move_x = 0
+        self.right_move_x = self.width // 2
+        self.y_padding = 2
+        self.name_font_size = 20
+        self.move_font_size = 16
+        self.hp_font_size = 16
+        self.show_moves = options.show_moves
+        self.show_move_names = self.show_moves and self.move_font_size > 0
+        self.height = self.status_size + self.hp_bar_height + self.y_padding * 2
+        if self.show_moves:
+            self.height += (self.move_bar_height + self.y_padding) * 2
         # at any given time
         # the ui can display one non-volatile status (burn, freeze, paralysis, poison, sleep, toxic)
         # and one volatile status (every other status)
@@ -236,6 +259,7 @@ class UIElement:
         # this is so that an icon isnt getting displayed twice if there are two similar statuses
         # when a status wears off, but there is a similar status remaining, since they share a list, its place in the queue wont change
         self.status_queue = []
+        self.setup()
 
     def next_status_icon(self):
         if len(self.status_queue) > 1:
@@ -269,22 +293,23 @@ class UIElement:
             volatile_status_icon = self.status_queue[0][0].status_icon
         if self.character.has_non_volatile_status:
             non_volatile_status_icon = self.character.get_non_volatile_status().status_icon
+        y = self.status_y+self.y
         if non_volatile_status_icon is None and volatile_status_icon is None:
             return
         elif volatile_status_icon is not None and non_volatile_status_icon is not None:
-            image = self.game.status_icon_images[volatile_status_icon]
-            surface = self.game.status_icon_surfaces[volatile_status_icon]
+            image = STATUS_IMAGES["image"][volatile_status_icon]
+            surface = STATUS_IMAGES["surface"][volatile_status_icon]
             self.game.draw_image(
                 self.x + self.status1_x,
-                self.y,
+                y,
                 surface,
                 image
                 )
-            image = self.game.status_icon_images[non_volatile_status_icon]
-            surface = self.game.status_icon_surfaces[non_volatile_status_icon]
+            image = STATUS_IMAGES["image"][non_volatile_status_icon]
+            surface = STATUS_IMAGES["surface"][non_volatile_status_icon]
             self.game.draw_image(
                 self.x + self.status2_x,
-                self.y,
+                y,
                 surface,
                 image
                 )
@@ -293,11 +318,11 @@ class UIElement:
                 icon = volatile_status_icon
             else:
                 icon = non_volatile_status_icon
-            image = self.game.status_icon_images[icon]
-            surface = self.game.status_icon_surfaces[icon]
+            image = STATUS_IMAGES["image"][icon]
+            surface = STATUS_IMAGES["surface"][icon]
             self.game.draw_image(
                 self.x + self.status1_x,
-                self.y,
+                y,
                 surface,
                 image
                 )
@@ -318,9 +343,20 @@ class UIElement:
         for i, move in enumerate(self.character.current_moves):
             if move.name != self.move_name_strings[i]:
                 self.move_name_strings[i] = move.name
-                self.move_name_texts[i] = HonseText(self.game, move.name, self.font, self.move_font_size, (0, 0, 0, 255))
+                if self.show_move_names:
+                    font_size = self.move_font_size
+                    font = self.font.get_pil_font(font_size)
+                    move_name_length = font.getlength(move.name)
+                    while move_name_length > self.max_move_name_length_pixels:
+                        font_size -= 1
+                        font = self.font.get_pil_font(font_size)
+                        move_name_length = font.getlength(move.name)
+                    self.move_name_texts[i] = HonseText(self.game, move.name, self.font, font_size, (0, 0, 0, 255))
+                else:
+                    # setting it to true indicates a move exists but the name should not be shown
+                    self.move_name_texts[i] = True
 
-    def first_draw(self, draw):
+    def setup(self):
         self.font = self.game.message_fonts["gen4"]
         name_bg_color = self.character.team.color_rgb
         name_bg_color = (
@@ -339,6 +375,16 @@ class UIElement:
             name_bg_height = ascent + descent
             name_length = font.getlength(self.character.name)
         self.name_text = HonseText(self.game, self.character.name, self.font, self.name_font_size, (255, 255, 255, 255), name_bg_color, self.name_gradient_size, self.width, name_bg_height)
+        # need to get image to get size
+        self.name_text.get_background_image()
+        self.name_text_height = self.name_text.get_size()[1]
+        if self.name_text_height > self.status_size:
+            self.height += self.name_text_height - self.status_size
+            self.status_y = (self.name_text_height - self.status_size) // 2
+            self.name_y = 0
+        else:
+            self.status_y = 0
+            self.name_y = (self.status_size - self.name_text_height) // 2
         font = self.font.get_pil_font(self.hp_font_size)
         self.hp_label_width = font.getlength("100%") + 8
         self.last_hp_amount = 0
@@ -352,9 +398,9 @@ class UIElement:
             centered = False
         else:
             centered = True
-        y = self.y + self.y_padding
-        self.name_text.draw(self.x, y, True, centered)
-        y += self.name_text.get_size()[1] + self.y_padding
+        y = self.y
+        self.name_text.draw(self.x, y+self.name_y, True, centered)
+        y = self.y + max(self.name_text.get_size()[1], self.status_size) + self.y_padding
         health_value = self.character.hp / self.character.max_hp
         draw_health_bar(self.game, self.x, y, self.width, self.hp_bar_height, health_value, self.hp_text, self.hp_label_width)
         y += self.y_padding + self.hp_bar_height
@@ -371,12 +417,11 @@ class UIElement:
             else:
                 x = self.x + self.right_move_x
             if i == 2:
-                y += self.move_bar_height + (self.y_padding // 2)
+                y += self.move_bar_height + self.y_padding
             max_cooldown = self.character.current_moves[i].cooldown
             current_cooldown = self.character.cooldowns[i]
             locked = self.character.is_move_locked(i)
             draw_move_bar(self.game, x, y, self.move_bar_width, self.move_bar_height, current_cooldown/max_cooldown, self.move_name_texts[i], x + self.move_name_padding, locked=locked or fainted)
-
 
 # text_surface = self.message_fonts[font_key][0].render(text, False, color)
 class HonseFont:
@@ -384,13 +429,7 @@ class HonseFont:
         self.game = game
         self.name = name
         self.file = file
-        self.pygame_fonts = {}
         self.pil_fonts = {}
-
-    def get_pygame_font(self, size):
-        if size not in self.pygame_fonts:
-            self.pygame_fonts[size] = pygame.font.Font(self.file, self.game.times_width_ratio(size))
-        return self.pygame_fonts[size]
 
     def get_pil_font(self, size):
         if size not in self.pil_fonts:
@@ -428,7 +467,10 @@ class HonseText:
         display_text = ""
         for i, text_part in enumerate(text_parts):
             if i != 0:
-                if text_part.startswith("#"):
+                if text_part.startswith("DEFAULT"):
+                    text_part = text_part.removeprefix("DEFAULT")
+                    current_color = self.color
+                elif text_part.startswith("#"):
                     hex_code = text_part[:7]
                     rgb = ImageColor.getcolor(hex_code, "RGB")
                     text_part = text_part[7:]
@@ -541,18 +583,3 @@ def hexify(num):
 
 def hexify_tuple(tup):
     return ''.join(hexify(value) for value in tup)
-
-'''
-    def get_font(self, font, size):
-        pass
-
-    if self.pygame_mode:
-            color = pygame.Color(r, g, b)
-            text_surface = self.message_fonts[font_key][0].render(text, False, color)
-            text_surface.set_alpha(a)
-            self.screen.blit(text_surface, (x, y))
-        if self.video_mode:
-            img, size = self.get_text_image(text, font_key, r, g, b, a)
-            self.current_frame_image.paste(img, (int(x), int(y)), img)
-'''
-

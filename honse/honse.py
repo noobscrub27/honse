@@ -1,11 +1,6 @@
 from collections import defaultdict
-import os.path
 import tempfile
 import pygame
-
-pygame.init()
-pygame.font.init()
-pygame.mixer.init()
 import random
 import math
 import honse_data
@@ -15,7 +10,7 @@ import sys
 import json
 import numpy as np
 import base64
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from io import BytesIO
 import cProfile
 import functools
@@ -24,6 +19,8 @@ import subprocess
 import numpy as np
 from pydub import AudioSegment
 import datetime
+import pstats
+import sys
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -60,24 +57,55 @@ class HonseGame:
         video_mode,
         width=1920,
         fps=60,
+        zoom_level=1
     ):
-        self.pygame_mode = pygame_mode
+        self.success = False
+        self.pygame_mode = pygame_mode and honse_data.PYGAME_ENABLED
         self.video_mode = video_mode
-        self.game_end_timer = 300
+        self.game_end_timer = 150
         self.game_end = False
         self.SCREEN_WIDTH = width
         self.SCREEN_HEIGHT = int(width * 9/16)
+        self.width_ratio = self.SCREEN_WIDTH / 1920
         self.FRAMES_PER_SECOND = fps
+        self.zoom_level = zoom_level
+        # this needs to be done before the characters are added because each character's ui needs access to the fonts
+        self.font_setup()
         if self.pygame_mode:
             self.screen = pygame.display.set_mode((self.SCREEN_WIDTH , self.SCREEN_HEIGHT))
+            self.clock = pygame.time.Clock()
         else:
-            self.screen = pygame.display.set_mode((self.SCREEN_WIDTH , self.SCREEN_HEIGHT), flags=pygame.HIDDEN)
-        self.clock = pygame.time.Clock()
+            #self.screen = pygame.display.set_mode((self.SCREEN_WIDTH , self.SCREEN_HEIGHT), flags=pygame.HIDDEN)
+            self.screen = None
+            self.clock = None
         self.running = True
-        self.dt = 0
         self.frame_count = 0
         self.teams = teams
         self.characters = []
+        ui_width = 240
+        ui_padding = 5
+        ui_options = honse_data.UIElementOptions(width=ui_width)
+        current_x = self.SCREEN_WIDTH - (ui_width + ui_padding)
+        current_y = ui_padding
+        largest_ui_height = 0
+        for i, team in enumerate(self.teams):
+            team.team_id = i
+            team.in_battle = True
+            for mon in team.pokemon:
+                self.characters.append(mon.to_character(
+                    game=self,
+                    team=team,
+                    ui_x=0, ui_y=0,
+                    ui_options=ui_options))
+                if self.characters[-1].ui_element.height > largest_ui_height:
+                    largest_ui_height = self.characters[-1].ui_element.height
+        for mon in self.characters:
+            mon.ui_element.x = current_x
+            mon.ui_element.y = current_y
+            current_y += ui_padding + largest_ui_height
+            if current_y + largest_ui_height + ui_padding > self.SCREEN_HEIGHT:
+                current_x -= (ui_width + ui_padding)
+                current_y = ui_padding
         self.hazards = []
         self.json_path = json_path
         self.particle_spawner = honse_particles.ParticleSpawner(self)
@@ -101,64 +129,18 @@ class HonseGame:
         music_folder = os.path.join("bgm", music_folder)
         files_in_music_folder = os.listdir(music_folder)
         self.music = os.path.join(music_folder, random.choice(files_in_music_folder))
-        self.width_ratio = self.SCREEN_WIDTH / 1920
         self.sound_events = []
-        self.particle_images = {}
-        self.particle_surfaces = {}
-        self.status_icon_images = {}
-        self.status_icon_surfaces = {}
         # this is stored in the game bc i want all the statuses to update at the same time
         # i think it will look nice :)
         self.update_status_icons_in_n_frames = honse_data.STATUS_ICON_BLINK_LENGTH
         self.environment_type = honse_pokemon.ENVIRONMENTS["grass"]
+        # field effects should eventually be moved to a system similar to effects for pokemon
         self.weather = honse_pokemon.Weather.CLEAR
         self.load_map()
-        self.create_sounds()
         self.play_music()
-        self.font_setup()
-        self.load_status_icons()
-        self.load_image_particles()
+        for character in self.characters:
+            character.spawn_in()
         
-    def load_image_particles(self):
-        path = os.path.join("vfx", "particles")
-        self.particle_images["punch"] = [Image.open(os.path.join(path, "punch.png"))]
-        self.particle_surfaces["punch"] = [honse_data.image_to_surface(self.particle_images["punch"][0])]
-        for opacity in [80, 60, 40, 20]:
-            self.particle_images["punch"].append(honse_data.alpha_change(self.particle_images["punch"][0].copy(), opacity))
-            self.particle_surfaces["punch"].append(honse_data.image_to_surface(self.particle_images["punch"][-1]))
-        razor_leaf = Image.open(os.path.join(path, "razor leaf.png"))
-        transparent_razor_leaf = honse_data.alpha_change(razor_leaf.copy(), 75)
-        self.particle_images["razor leaf"] = honse_data.from_sprite_sheet(razor_leaf, 40)
-        self.particle_surfaces["razor leaf"] = [honse_data.image_to_surface(item) for item in self.particle_images["razor leaf"]]
-        self.particle_images["razor leaf transparent"] = honse_data.from_sprite_sheet(transparent_razor_leaf, 40)
-        self.particle_surfaces["razor leaf transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["razor leaf transparent"]]
-        thunderbolt = Image.open(os.path.join(path, "thunderbolt.png"))
-        self.particle_images["thunderbolt"] = honse_data.from_sprite_sheet(thunderbolt, 60)
-        self.particle_surfaces["thunderbolt"] = [honse_data.image_to_surface(item) for item in self.particle_images["thunderbolt"]]
-        ice = Image.open(os.path.join(path, "ice.png"))
-        new_size = (int(ice.size[0]*1.5), int(ice.size[1]*1.5))
-        ice = ice.resize(new_size)
-        transparent_ice = honse_data.alpha_change(ice.copy(), 60)
-        self.particle_images["ice"] = honse_data.from_sprite_sheet(ice, 120)
-        self.particle_surfaces["ice"] = [honse_data.image_to_surface(item) for item in self.particle_images["ice"]]
-        self.particle_images["ice transparent"] = honse_data.from_sprite_sheet(transparent_ice, 120)
-        self.particle_surfaces["ice transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["ice transparent"]]
-        protect = Image.open(os.path.join(path, "barrier.png"))
-        protect = honse_data.hue_shift(protect, 115)
-        transparent_protect = honse_data.alpha_change(protect.copy(), 60)
-        self.particle_images["protect"] = honse_data.from_sprite_sheet(protect, 48)
-        self.particle_surfaces["protect"] = [honse_data.image_to_surface(item) for item in self.particle_images["protect"]]
-        self.particle_images["protect transparent"] = honse_data.from_sprite_sheet(transparent_protect, 48)
-        self.particle_surfaces["protect transparent"] = [honse_data.image_to_surface(item) for item in self.particle_images["protect transparent"]]
-    def load_status_icons(self):
-        path = os.path.join("vfx", "status icons")
-        files = os.listdir(path)
-        for file in files:
-            no_file_extension = file.removesuffix(".png")
-            file_path = os.path.join(path, file)
-            self.status_icon_images[no_file_extension] = Image.open(file_path)
-            self.status_icon_surfaces[no_file_extension] = honse_data.image_to_surface(self.status_icon_images[no_file_extension])
-
     def times_width_ratio(self, value):
         # is it faster to do it this way? idk!!!!
         # does it matter? i also dont know!!!!!!
@@ -181,21 +163,9 @@ class HonseGame:
             #
             # no need :3 - lina
 
-    def create_sounds(self):
-        DIR = "sfx_wave"
-        files = os.listdir(DIR)
-        self.sounds = {}
-        for file in files:
-            no_file_extension = file.removesuffix(".mp3").removesuffix(".wav")
-            file_path = os.path.join(DIR, file)
-            self.sounds[no_file_extension] = [
-                file_path,
-                pygame.mixer.Sound(file_path)
-                ]
-
     def play_sound(self, sound, repeat=0):
         if self.pygame_mode:
-            self.sounds[sound][1].play(repeat)
+            honse_data.SOUNDS[sound][1].play(repeat)
         if self.video_mode:
             self.sound_events.append(
                 (self.frame_count, sound, repeat)
@@ -206,7 +176,6 @@ class HonseGame:
         # exit()
         frame_array = to_numpy(frame)
         frame_bytes = memoryview(frame_array)
-
         try:
             self.video_writer.stdin.write(frame_bytes)
         except BrokenPipeError:
@@ -257,7 +226,7 @@ class HonseGame:
             if name not in sfx_cache:
                 #print("Loading sound effect:", name)
                 seg = (AudioSegment
-                    .from_file(self.sounds[name][0])
+                    .from_file(honse_data.SOUNDS[name][0])
                     .set_frame_rate(SR)
                     .set_channels(2)
                     .fade_in(10)
@@ -302,8 +271,6 @@ class HonseGame:
             )
             image.paste(self.background_image, (0, 0))
             draw = ImageDraw.Draw(image, "RGBA")
-            for character in self.characters:
-                character.ui_element.first_draw(draw)
             self.background_image = image
             temp_video_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
             self.video_tempfile = temp_video_file.name
@@ -329,8 +296,6 @@ class HonseGame:
                 stderr=subprocess.DEVNULL,
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
-
-            
             self.current_frame_image = Image.new(
                 "RGBA", (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
             )
@@ -508,21 +473,15 @@ class HonseGame:
             self.display_message("Tie!", "gen4", 48, (0, 0, 0, 255))
             self.game_end = True
 
-    def add_character(self, name, team, level, stats, moves, types, image):
-        number_of_teammates = len([i for i in self.characters if i.team == team])
-        character = honse_pokemon.Character(
-            self, name, team, level, stats, moves, types, image, 1
-        )
-        self.characters.append(character)
-
     def display_message(self, text, font_name, size, rgba):
         text = honse_data.HonseText(self, text, self.message_fonts[font_name], size, rgba)
-        self.message_log.append([text.display_text, True])
-        self.current_frame_messages.append(text)
+        if len(text.display_text):
+            self.message_log.append([text.display_text, True])
+            self.current_frame_messages.append(text)
 
     def render_all_messages(self):
         # this is where the next text box should be drawn
-        y = honse_data.BASE_HEIGHT
+        y = self.SCREEN_HEIGHT
         if len(self.current_frame_messages):
             reversed_copy = [msg for msg in self.current_frame_messages]
             reversed_copy.reverse()
@@ -617,47 +576,41 @@ class HonseGame:
 
     def main_loop(self):
         self.first_draw()
-        average_fps = []
+        start_timestamp = datetime.datetime.now().timestamp()
         try:
             while self.running:
                 self.frame_count += 1
                 if not self.game_end:
                     if self.frame_count == honse_data.SUDDEN_DEATH_FRAMES:
                         self.display_message("Sudden death!", "gen4", 48, (127, 0, 0, 255))
+                        self.display_message("Pokemon will randomly become the center of attention!", "gen4", 24, (127, 0, 0, 255))
+                    elif self.frame_count == honse_data.SUDDEN_DEATH_FRAMES * 2:
+                        self.display_message("YOUR TAKING TOO LONG", "gen4", 48, (127, 0, 0, 255))
                     if self.frame_count >= honse_data.SUDDEN_DEATH_FRAMES:
-                        meteor_frequency = max(30, 300 // (2 ** (self.frame_count // honse_data.SUDDEN_DEATH_FRAMES)))
-                        if self.frame_count % meteor_frequency == 0:
-                            radius = 100
-                            max_x = ((3 * 1920) // 4) - radius
-                            max_y = ((3 * 1080) // 4) - radius
-                            damage_options = honse_pokemon.DamageEffectOptions(
-                                damage=1/4,
-                                percent_of_max_hp_damage=True,
-                                message="A falling meteor hit TARGET!",
-                                sound="Hit Normal Damage")
-                            hazard_options = honse_pokemon.HazardOptions(
-                                lifetime=180,
-                                hazard_set_radius_growth_time=90,
-                                active_radius_growth_time=60,
-                                active_full_radius_duration=30,
-                                knockback=5,
-                                immune_timer=45,
-                                effect=honse_pokemon.DamageEffect,
-                                effect_options=damage_options)
-                            honse_pokemon.Hazard(
-                                options=hazard_options,
-                                position=(random.randint(radius, max_x), random.randint(radius, max_y)),
-                                radius=radius,
-                                game=self)
+                        hazard_frequency = 300
+                        if self.frame_count % hazard_frequency == 0:
+                            radius = 500
+                            alive_characters = [character for character in self.characters if not character.is_fainted()]
+                            if len(alive_characters):
+                                character = random.choice(alive_characters)
+                                options = honse_pokemon.CenterOfAttentionOptions(lifetime=180, radius=radius)
+                                honse_pokemon.CenterOfAttentionEffect(options, self, None, None, character)
+                    # it should take ~300 frames (5 seconds) to kill a full health mon
+                    if self.frame_count > honse_data.SUDDEN_DEATH_FRAMES * 2 and self.frame_count % 3 == 0:
+                        for character in self.characters:
+                            if not character.is_fainted():
+                                damage = character.max_hp / 100
+                                character.do_damage(None, damage, silent=True)
                 if len(self.message_log) and self.message_log[-1][0].startswith("##### FRAME "):
                     self.message_log[-1][0] = f"##### FRAME {self.frame_count} #####"
                 else:
                     self.message_log.append([f"##### FRAME {self.frame_count} #####", False])
                 # poll for events
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        self.running = False
-                        sys.exit()
+                if honse_data.PYGAME_ENABLED:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            self.running = False
+                            sys.exit()
 
                 self.draw_background()
 
@@ -750,22 +703,15 @@ class HonseGame:
                 if self.running and self.frame_count % self.draw_every_nth_frame == 0:
                     self.show_display()
 
-                
                 if self.pygame_mode:
                     self.clock.tick(self.FRAMES_PER_SECOND)
-                else:
-                    self.clock.tick(0)
-                average_fps.append(self.clock.get_fps())
-                
-                if self.frame_count % honse_data.FRAMES_PER_SECOND == 0:
-                    print(f"FPS: {np.mean(average_fps)}")
-                    average_fps = []
-                
 
                 if self.game_end:
                     self.game_end_timer -= 1
                     if self.game_end_timer < 0:
                         self.running = False
+                        for team in self.teams:
+                            team.in_battle = False
         except KeyboardInterrupt:
             self.running = False
         finally:
@@ -774,7 +720,10 @@ class HonseGame:
             # so i don't want to outright delete these print logs as we may need them later
             # we should be safe not to have all of them on screen each run
             # especially now that ive added a way to run the game dozens of times for testing reasons
-            print(f"Game complete! Average FPS: {np.mean(average_fps)}")
+            end_timestamp = datetime.datetime.now().timestamp()
+            time_elapsed = end_timestamp - start_timestamp
+            fps = self.frame_count / time_elapsed
+            print(f"Game complete in {time_elapsed:.2f} seconds ({self.frame_count} frames). FPS: {fps:.2f}")
             with open(self.log_out_path, "w") as f:
                 for message in self.message_log:
                     f.write(message[0]+"\n")
@@ -817,14 +766,14 @@ class HonseGame:
                     creationflags=subprocess.CREATE_NO_WINDOW
                 )
                 print("Audio added to video")
+                self.success = True
                 
-def get_test_stats(base_stats):
+def get_test_stats():
     stat_names = ["HP", "ATK", "DEF", "SPA", "SPD", "SPE"]
     stats = {
-        "base stats": base_stats,
         "ivs": {stat: random.randint(0, 31) for stat in stat_names},
         "evs": {stat: 0 for stat in stat_names},
-        "nature": random.choice(list(honse_data.NATURES.values()))
+        "nature": random.choice(list(honse_data.NATURES.keys()))
             }
     ev_budget = 510
     random.shuffle(stat_names)
@@ -836,105 +785,207 @@ def get_test_stats(base_stats):
             break
     return stats
     
+TEST_SPECIES = [
+    honse_pokemon.Species(0, "Saurbot", "bob.png",
+                          {"HP": 77, "ATK": 5, "DEF": 107, "SPA": 5, "SPD": 104, "SPE": 20},
+                          [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Saur", "saur.png",
+                          {"HP": 114, "ATK": 44, "DEF": 104, "SPA": 95, "SPD": 138, "SPE": 55},
+                          [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Poison"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Stoutland", "stoutland.png",
+                          {"HP": 85, "ATK": 120, "DEF": 95, "SPA": 45, "SPD": 95, "SPE": 80},
+                          [honse_pokemon.pokemon_types["Normal"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Vesuvius", "vesuvius.png",
+                          {"HP": 78, "ATK": 97, "DEF": 81, "SPA": 150, "SPD": 87, "SPE": 122},
+                          [honse_pokemon.pokemon_types["Fire"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Apollo", "apollo.png",
+                          {"HP": 88, "ATK": 119, "DEF": 103, "SPA": 117, "SPD": 101, "SPE": 94},
+                          [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Ghost"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Dragonite", "dragonite.png",
+                          {"HP": 91, "ATK": 134, "DEF": 95, "SPA": 100, "SPD": 100, "SPE": 80},
+                          [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Alakazam", "alakazam.png",
+                          {"HP": 55, "ATK": 50, "DEF": 45, "SPA": 135, "SPD": 95, "SPE": 120},
+                          [honse_pokemon.pokemon_types["Psychic"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Warwolf", "warwolf.png",
+                          {"HP": 106, "ATK": 116, "DEF": 69, "SPA": 46, "SPD": 87, "SPE": 96},
+                          [honse_pokemon.pokemon_types["Ice"], honse_pokemon.pokemon_types["Dark"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Sudowoodo", "sudowoodo.png",
+                          {"HP": 80, "ATK": 115, "DEF": 125, "SPA": 30, "SPD": 65, "SPE": 55},
+                          [honse_pokemon.pokemon_types["Rock"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Croconaw", "croconaw.png",
+                          {"HP": 75, "ATK": 90, "DEF": 85, "SPA": 59, "SPD": 68, "SPE": 68},
+                          [honse_pokemon.pokemon_types["Water"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Drowzee", "drowzee.png",
+                          {"HP": 67, "ATK": 79, "DEF": 61, "SPA": 64, "SPD": 94, "SPE": 42},
+                          [honse_pokemon.pokemon_types["Psychic"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Luxio", "luxio.png",
+                          {"HP": 70, "ATK": 105, "DEF": 60, "SPA": 85, "SPD": 60, "SPE": 70},
+                          [honse_pokemon.pokemon_types["Electric"], honse_pokemon.pokemon_types["Dark"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Riolu", "riolu.png",
+                          {"HP": 50, "ATK": 75, "DEF": 45, "SPA": 45, "SPD": 45, "SPE": 70},
+                          [honse_pokemon.pokemon_types["Fighting"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Manaphy", "Manaphy.png",
+                          {"HP": 100, "ATK": 100, "DEF": 100, "SPA": 100, "SPD": 100, "SPE": 100},
+                          [honse_pokemon.pokemon_types["Water"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Steelix", "steelix.png",
+                          {"HP": 75, "ATK": 95, "DEF": 200, "SPA": 50, "SPD": 75, "SPE": 25},
+                          [honse_pokemon.pokemon_types["Steel"], honse_pokemon.pokemon_types["Ground"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Camerupt", "camerupt.png",
+                          {"HP": 100, "ATK": 110, "DEF": 75, "SPA": 125, "SPD": 90, "SPE": 40},
+                          [honse_pokemon.pokemon_types["Fire"], honse_pokemon.pokemon_types["Ground"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Electrode", "electrode.png",
+                          {"HP": 60, "ATK": 80, "DEF": 70, "SPA": 100, "SPD": 80, "SPE": 150},
+                          [honse_pokemon.pokemon_types["Electric"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    honse_pokemon.Species(0, "Shuckle", "shuckle.png",
+                          {"HP": 20, "ATK": 10, "DEF": 230, "SPA": 10, "SPD": 230, "SPE": 5},
+                          [honse_pokemon.pokemon_types["Bug"], honse_pokemon.pokemon_types["Rock"]],
+                          {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
+    ]
 
-test_pokemon = {
-    "Saurbot": {
-        "stats": {"HP": 77, "ATK": 5, "DEF": 107, "SPA": 5, "SPD": 104, "SPE": 20},
-        "types": [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Steel"]],
-        "file": "bob.png"},
-    "Saur": {
-        "stats": {"HP": 114, "ATK": 44, "DEF": 104, "SPA": 95, "SPD": 138, "SPE": 55},
-        "types": [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Poison"]],
-        "file": "saur.png"},
-    "Apollo": {
-        "stats": {"HP": 88, "ATK": 119, "DEF": 103, "SPA": 117, "SPD": 101, "SPE": 94},
-        "types": [honse_pokemon.pokemon_types["Grass"], honse_pokemon.pokemon_types["Ghost"]],
-        "file": "apollo.png"},
-    "Dragonite": {
-        "stats": {"HP": 91, "ATK": 134, "DEF": 95, "SPA": 100, "SPD": 100, "SPE": 80},
-        "types": [honse_pokemon.pokemon_types["Dragon"], honse_pokemon.pokemon_types["Flying"]],
-        "file": "dragonite.png"},
-    "Alakazam": {
-        "stats": {"HP": 55, "ATK": 50, "DEF": 45, "SPA": 135, "SPD": 95, "SPE": 120},
-        "types": [honse_pokemon.pokemon_types["Psychic"]],
-        "file": "alakazam.png"},
-    "Warwolf": {
-        "stats": {"HP": 106, "ATK": 116, "DEF": 69, "SPA": 46, "SPD": 87, "SPE": 96},
-        "types": [honse_pokemon.pokemon_types["Ice"], honse_pokemon.pokemon_types["Dark"]],
-        "file": "warwolf.png"},
-    "Sudowoodo": {
-        "stats": {"HP": 80, "ATK": 115, "DEF": 125, "SPA": 30, "SPD": 65, "SPE": 55},
-        "types": [honse_pokemon.pokemon_types["Rock"]],
-        "file": "sudowoodo.png"},
-    "Croconaw": {
-        "stats": {"HP": 75, "ATK": 90, "DEF": 85, "SPA": 59, "SPD": 68, "SPE": 68},
-        "types": [honse_pokemon.pokemon_types["Water"]],
-        "file": "croconaw.png"},
-    "Drowzee": {
-        "stats": {"HP": 67, "ATK": 79, "DEF": 61, "SPA": 64, "SPD": 94, "SPE": 42},
-        "types": [honse_pokemon.pokemon_types["Psychic"]],
-        "file": "drowzee.png"},
-    "Luxio": {
-        "stats": {"HP": 70, "ATK": 105, "DEF": 60, "SPA": 85, "SPD": 60, "SPE": 70},
-        "types": [honse_pokemon.pokemon_types["Electric"], honse_pokemon.pokemon_types["Dark"]],
-        "file": "luxio.png"},
-    "Riolu": {
-        "stats": {"HP": 50, "ATK": 75, "DEF": 45, "SPA": 45, "SPD": 45, "SPE": 70},
-        "types": [honse_pokemon.pokemon_types["Fighting"]],
-        "file": "riolu.png"},
-    "Manaphy": {
-        "stats": {"HP": 100, "ATK": 100, "DEF": 100, "SPA": 100, "SPD": 100, "SPE": 100},
-        "types": [honse_pokemon.pokemon_types["Water"]],
-        "file": "manaphy.png"},
-    "Steelix": {
-        "stats": {"HP": 75, "ATK": 95, "DEF": 200, "SPA": 50, "SPD": 75, "SPE": 25},
-        "types": [honse_pokemon.pokemon_types["Steel"], honse_pokemon.pokemon_types["Ground"]],
-        "file": "steelix.png"},
-    "Camerupt": {
-        "stats": {"HP": 100, "ATK": 110, "DEF": 75, "SPA": 125, "SPD": 90, "SPE": 40},
-        "types": [honse_pokemon.pokemon_types["Fire"], honse_pokemon.pokemon_types["Ground"]],
-        "file": "camerupt.png"},
-    "Electrode": {
-        "stats": {"HP": 60, "ATK": 80, "DEF": 70, "SPA": 100, "SPD": 80, "SPE": 150},
-        "types": [honse_pokemon.pokemon_types["Electric"]],
-        "file": "electrode.png"},
-    "Shuckle": {
-        "stats": {"HP": 20, "ATK": 10, "DEF": 230, "SPA": 10, "SPD": 230, "SPE": 5},
-        "types": [honse_pokemon.pokemon_types["Bug"], honse_pokemon.pokemon_types["Rock"]],
-        "file": "shuckle.png"},
-    }
-def play_game(games_to_play):
+def test_game(games_to_play):
+    moves_list = list(honse_pokemon.MOVES.values())
     for i in range(games_to_play):
         print(f"Starting game {i+1}/{games_to_play}.")
-        combatants = random.sample(list(test_pokemon.keys()), 8)
-        # i am lazy and dont want to resize the map rn
-        # plz pass in a map that is 3/4 the size of height and width for the second parameter
         number_of_teams = 2
+        pokemon_per_team = 3
+        level = 100
         teams = []
         for i in range(number_of_teams):
-            teams.append(honse_pokemon.Team(i, f"Team {i+1}", honse_data.TEAM_COLORS[i]))
+            teams.append(honse_pokemon.Team(f"Team {i+1}", honse_data.TEAM_COLORS[i]))
+            for j in range(pokemon_per_team):
+                species = random.choice(TEST_SPECIES)
+                stats = get_test_stats()
+                mon = honse_pokemon.Pokemon(
+                    species = species,
+                    level = level,
+                    experience = 0,
+                    moves = random.sample(moves_list, 4),
+                    nature = stats["nature"],
+                    ivs = stats["ivs"],
+                    evs = stats["evs"],
+                    friendship = 255)
+                teams[-1].pokemon.append(mon)
+
         game = HonseGame("map03bw.json", "map03.png", "wild", teams, True, True)
-        
-        for i, character in enumerate(combatants):
-            team = teams[i % number_of_teams]
-            game.add_character(
-                character,
-                team,
-                100,
-                get_test_stats(test_pokemon[character]["stats"]),
-                #[honse_pokemon.MOVES["Blizzard"]],
-                random.sample(list(honse_pokemon.MOVES.values()), 4),
-                test_pokemon[character]["types"],
-                test_pokemon[character]["file"]
-                )
         game.main_loop()
     print(honse_data.BUG_FINDER.get_found_bugs())
-cProfile.run("play_game(1)", sort="cumtime", filename="res")
 
-import pstats
+def create_sounds():
+    DIR = "sfx_wave"
+    files = os.listdir(DIR)
+    for file in files:
+        no_file_extension = file.removesuffix(".mp3").removesuffix(".wav")
+        file_path = os.path.join(DIR, file)
+        if honse_data.PYGAME_ENABLED:
+            pygame_sound = pygame.mixer.Sound(file_path)
+        else:
+            pygame_sound = None
+        honse_data.SOUNDS.update({no_file_extension: [file_path, pygame_sound]})
+    
 
-p = pstats.Stats("res")
-p.strip_dirs()
-p.sort_stats("cumulative").print_stats(40)
-pygame.quit()
+# particle images works like this
+# {"image": {}, "surface": {}}
+# each dict contains key value pairs where the key is the name of the image and the value is the list of sprites that image has
+# sometimes there will just be one sprite in the image but for animated particles it might have more
+# if pygame is not enabled, the keys will exist for surface's dict but the values will all be empty lists
+def add_to_particle_images(key, images):
+    if type(images) != list:
+        images = [images]
+    if key not in honse_data.PARTICLE_IMAGES["image"]:
+        honse_data.PARTICLE_IMAGES["image"][key] = []
+        honse_data.PARTICLE_IMAGES["surface"][key] = []
+    honse_data.PARTICLE_IMAGES["image"][key] += images
+    if honse_data.PYGAME_ENABLED:
+        for image in images:
+            honse_data.PARTICLE_IMAGES["surface"][key].append(honse_data.image_to_surface(image))
+ 
+
+def load_image_particles():
+    path = os.path.join("vfx", "particles")
+    def get_image(filename):
+        return Image.open(os.path.join(path, filename))
+    # punch
+    punch = get_image("punch.png")
+    add_to_particle_images("punch", punch)
+    for opacity in [80, 60, 40, 20]:
+        transparent_punch = honse_data.alpha_change(punch.copy(), opacity)
+        add_to_particle_images("punch", transparent_punch)
+    # razor leaf
+    razor_leaf = get_image("razor leaf.png")
+    razor_leaf = honse_data.alpha_change(razor_leaf, 75)
+    razor_leaf = honse_data.from_sprite_sheet(razor_leaf, 40)
+    add_to_particle_images("razor leaf", razor_leaf)
+    # thunderbolt
+    thunderbolt = get_image("thunderbolt.png")
+    thunderbolt = honse_data.from_sprite_sheet(thunderbolt, 60)
+    add_to_particle_images("thunderbolt", thunderbolt)
+    # ice
+    ice = get_image("ice.png")
+    new_size = (int(ice.size[0]*1.5), int(ice.size[1]*1.5))
+    ice = ice.resize(new_size)
+    ice = honse_data.alpha_change(ice, 40)
+    ice = honse_data.from_sprite_sheet(ice, 120)
+    add_to_particle_images("ice", ice)
+    # protect
+    barrier = get_image("barrier.png")
+    protect = honse_data.hue_shift(barrier.copy(), 115)
+    protect = honse_data.alpha_change(protect, 60)
+    protect = honse_data.from_sprite_sheet(protect, 48)
+    add_to_particle_images("protect", protect)
+
+def load_status_icons():
+    path = os.path.join("vfx", "status icons")
+    files = os.listdir(path)
+    for file in files:
+        no_file_extension = file.removesuffix(".png")
+        file_path = os.path.join(path, file)
+        image = Image.open(file_path)
+        honse_data.STATUS_IMAGES["image"][no_file_extension] = image
+        print(no_file_extension)
+        if honse_data.PYGAME_ENABLED:
+            honse_data.STATUS_IMAGES["surface"][no_file_extension] = honse_data.image_to_surface(image)
+        else:
+            honse_data.STATUS_IMAGES["surface"][no_file_extension] = None
+    print(honse_data.STATUS_IMAGES)
+
+def setup_honse_game():
+    if honse_data.PYGAME_ENABLED:
+        pygame.display.set_mode()
+    create_sounds()
+    load_status_icons()
+    load_image_particles()
+    honse_pokemon.MOVES = honse_pokemon.create_moves()
+    print(f"Number of moves: {len(honse_pokemon.MOVES)}")
+
+if __name__ == "__main__":
+    '''
+    honse_data.PYGAME_ENABLED = True
+    pygame.init()
+    pygame.mixer.init()
+    '''
+    setup_honse_game()
+    cProfile.run("test_game(1)", sort="cumtime", filename="res")
+    p = pstats.Stats("res")
+    p.strip_dirs()
+    p.sort_stats("cumulative").print_stats(40)
+    pygame.quit()
+
 

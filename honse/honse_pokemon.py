@@ -1,7 +1,3 @@
-from ast import Dict
-from io import BytesIO
-from telnetlib import STATUS
-import pygame
 import random
 import math
 import honse_data
@@ -15,10 +11,15 @@ from dataclasses import dataclass, field
 from copy import deepcopy
 from typing import Optional
 
+# wish should give a status that heals when it wears off but can be transfered to an ally if they touch
 BATTLE_TEXT_SIZE = {
     "large": 24,
     "medium": 16,
     "small": 0}
+
+DEFAULT_EFFECT_LIFETIME = 1200
+
+MOVES = {}
 
 #may break things
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -91,7 +92,7 @@ def crit_calc(attack, attacker, target):
             return damage_mod if random.random() <= 1/24 else 1
 
 def damage_formula(attack_object, attacker: "Character", defender: "Character"):
-    spread = not attack_object.initial_use
+    spread = attack_object.move.spread_radius > 0
     if attack_object.move.category == MoveCategories.PHYSICAL:
         attack_stat = "ATK" if attack_object.attack_stat_override is None else attack_object.attack_stat_override
         defense_stat = "DEF" if attack_object.defense_stat_override is None else attack_object.defense_stat_override
@@ -144,9 +145,8 @@ def damage_formula(attack_object, attacker: "Character", defender: "Character"):
         initial_damage = (
             ((((2 * attacker.level) / 5) + 2) * attack_object.power * (attack / defense)) / 50
         ) + 2
-        # spread is only true for the non-primary target of spread moves
         if spread:
-            spread_mod = 0.5
+            spread_mod = 0.75
         else:
             spread_mod = 1
         type_effectiveness = defender.get_type_matchup(attack_object.type, attack_object.move.effectiveness_overrides)
@@ -179,6 +179,7 @@ class EffectTrigger(enum.Enum):
     STAT_MODIFICATION = enum.auto()
     STAGE_MODIFICATION = enum.auto()
     BASE_STAT_OVERRIDE = enum.auto()
+    TRANSFORM_STAT_OVERRIDE = enum.auto()
     CRIT_STAGE_MODIFICATION = enum.auto()
     CRIT_DAMAGE_MODIFICATION = enum.auto()
     CRIT_NEGATION = enum.auto()
@@ -193,6 +194,10 @@ class EffectTrigger(enum.Enum):
     # triggers at the start of using a move
     ON_USE_MOVE = enum.auto()
     ON_TARGETED_BY_MOVE = enum.auto()
+    # triggers after on use move and before the move is executed
+    # this is for stuff like powder, which doesnt stop the move from being used but does interrupt it halfway before it can finish
+    AFTER_ON_USE_MOVE = enum.auto()
+    AFTER_ON_TARGETED_BY_MOVE = enum.auto()
     # triggers on a successful attack after damage and before secondaries
     ON_LANDING_MOVE = enum.auto()
     ON_HIT_BY_MOVE = enum.auto()
@@ -210,6 +215,15 @@ class EffectTrigger(enum.Enum):
     TYPE_EFFECTIVENESS_OVERRIDE = enum.auto()
     # after damage message is sent, before "X fainted!" is sent
     ON_FAINT = enum.auto()
+    LOCK_ON_CHECK = enum.auto()
+    SEMI_INVULNERABLE_CHECK = enum.auto()
+    CHECK_LEVITATING = enum.auto()
+    CHECK_FORCE_GROUNDED = enum.auto()
+    DAMAGE_SUBSTITUTE = enum.auto()
+    WEIGHT_OVERRIDE = enum.auto()
+    WEIGHT_MODIFIER = enum.auto()
+    SPECIES_OVERRIDE = enum.auto()
+    SIZE_MODIFICATION = enum.auto()
 
 # tags are used for effects that block or override other effects
 # effects that block or override other effects decide whether to do so based on tags
@@ -225,6 +239,7 @@ class EffectTag(enum.Enum):
     ROLLOUT = enum.auto()
     TYPE_OVERRIDE = enum.auto()
     AQUA_RING = enum.auto()
+    INGRAIN = enum.auto()
     PROTECT = enum.auto()
     ENDURE = enum.auto()
     BIDE = enum.auto()
@@ -235,6 +250,18 @@ class EffectTag(enum.Enum):
     ELECTRIFY = enum.auto()
     HELPING_HAND = enum.auto()
     CENTER_OF_ATTENTION = enum.auto()
+    HEAL_BLOCK = enum.auto()
+    ENCORE = enum.auto()
+    MIRACLE_EYE = enum.auto()
+    FORESIGHT = enum.auto()
+    MAGNET_RISE = enum.auto()
+    POWDER = enum.auto()
+    STOCKPILE = enum.auto()
+    SUBSTITUTE = enum.auto()
+    TAUNT = enum.auto()
+    TORMENT = enum.auto()
+    TELEKINESIS = enum.auto()
+    DROWSY = enum.auto()
 
 # most effects work by taking an input, modifying it, and returning an output
 # for example, stat modifications take an input (the stat), modify it, and return the changed stat as an output
@@ -254,7 +281,10 @@ STAT_NAMES = {
     "DEF": "Defense",
     "SPA": "Special Attack",
     "SPD": "Special Defense",
-    "SPE": "Speed"}
+    "SPE": "Speed",
+    "ACC": "Accuracy",
+    "EVA": "Evasion"
+    }
 
 stats = {"HP": 100, "ATK": 100, "DEF": 100, "SPA": 100, "SPD": 100, "SPE": 5}
 
@@ -397,26 +427,26 @@ def get_type_color(color):
     rgb = ImageColor.getcolor(color, "RGB")
     return (rgb[0], rgb[1], rgb[2], 127)
 
-pokemon_types["Bug"].hazard_color = get_type_color("#A8B820")
-pokemon_types["Dark"].hazard_color = get_type_color("#705848")
-pokemon_types["Dragon"].hazard_color = get_type_color("#7038F8")
-pokemon_types["Electric"].hazard_color = get_type_color("#F8D030")
-pokemon_types["Fairy"].hazard_color = get_type_color("#EE99AC")
-pokemon_types["Fighting"].hazard_color = get_type_color("#C03028")
-pokemon_types["Fire"].hazard_color = get_type_color("#F08030")
-pokemon_types["Flying"].hazard_color = get_type_color("#A890F0")
-pokemon_types["Ghost"].hazard_color = get_type_color("#705898")
-pokemon_types["Grass"].hazard_color = get_type_color("#78C850")
-pokemon_types["Ground"].hazard_color = get_type_color("#E0C068")
-pokemon_types["Ice"].hazard_color = get_type_color("#98D8D8")
-pokemon_types["Normal"].hazard_color = get_type_color("#A8A878")
-pokemon_types["Poison"].hazard_color = get_type_color("#A040A0")
-pokemon_types["Psychic"].hazard_color = get_type_color("#F85888")
-pokemon_types["Rock"].hazard_color = get_type_color("#B8A038")
-pokemon_types["Steel"].hazard_color = get_type_color("#D1D1E0")
-pokemon_types["Water"].hazard_color = get_type_color("#6890F0")
-pokemon_types["Shadow"].hazard_color = get_type_color("#42357D")
-pokemon_types["Typeless"].hazard_color = get_type_color("#FFFFFF")
+pokemon_types["Bug"].color = get_type_color("#A8B820")
+pokemon_types["Dark"].color = get_type_color("#705848")
+pokemon_types["Dragon"].color = get_type_color("#7038F8")
+pokemon_types["Electric"].color = get_type_color("#F8D030")
+pokemon_types["Fairy"].color = get_type_color("#EE99AC")
+pokemon_types["Fighting"].color = get_type_color("#C03028")
+pokemon_types["Fire"].color = get_type_color("#F08030")
+pokemon_types["Flying"].color = get_type_color("#A890F0")
+pokemon_types["Ghost"].color = get_type_color("#705898")
+pokemon_types["Grass"].color = get_type_color("#78C850")
+pokemon_types["Ground"].color = get_type_color("#E0C068")
+pokemon_types["Ice"].color = get_type_color("#98D8D8")
+pokemon_types["Normal"].color = get_type_color("#A8A878")
+pokemon_types["Poison"].color = get_type_color("#A040A0")
+pokemon_types["Psychic"].color = get_type_color("#F85888")
+pokemon_types["Rock"].color = get_type_color("#B8A038")
+pokemon_types["Steel"].color = get_type_color("#D1D1E0")
+pokemon_types["Water"].color = get_type_color("#6890F0")
+pokemon_types["Shadow"].color = get_type_color("#42357D")
+pokemon_types["Typeless"].color = get_type_color("#FFFFFF")
 
 ENVIRONMENTS = {
     "indoors": pokemon_types["Normal"],
@@ -442,7 +472,7 @@ def other_stat_formula(base, level, ivs, evs, nature):
 
 @dataclass
 class EffectOptions:
-    lifetime: int = 1200
+    lifetime: int = DEFAULT_EFFECT_LIFETIME
 class EffectInterface:
     # lifetime default value is 24 hours in frames. effectively infinite for the purposes of this program
     def __init__(self,
@@ -450,7 +480,7 @@ class EffectInterface:
                  source=None,
                  inflicted_by=None,
                  inflicted_upon=None,
-                 lifetime: int = 5184000
+                 lifetime: int = honse_data.A_LOT_OF_FRAMES
                  ):
         self.game = game
         self.inflicted_by = inflicted_by
@@ -463,6 +493,13 @@ class EffectInterface:
         if game is None and source is None and inflicted_by is None and inflicted_upon is None:
             self.success = False
         else:
+            # success starts at None
+            # it is set to True if an effect with a lifetime is successfully inflicted
+            # it is set to True automatically after instant_effect is called if this effect has the INSTANT EffectTrigger
+            # however, if instant_effect sets success to False, it will remain at False
+            # this is because the many instant effects will always be successful so I dont want to have to remember to set it to True after each one
+            # I'd rather remember to set to False in the cases where an effect fails
+            self.success = None
             self.success = self.infliction()
 
     # each effect has a way of assigning itself an effect value
@@ -483,13 +520,15 @@ class EffectInterface:
         return True
 
     def infliction(self):
-        success = False
+        success = None
         if self.can_inflict():
             self.instant_effect()
-            if EffectTrigger.INSTANT in self.triggers:
+            if EffectTrigger.INSTANT in self.triggers and self.success is None:
                 success = True
             else:
                 success = self.inflicted_upon.inflict_status(self)
+        if success is None or success == False:
+            success = False
         if success:
             self.after_infliction()
         return success
@@ -500,7 +539,11 @@ class EffectInterface:
     def instant_effect(self):
         pass
 
+    def display_inflicted_message(self):
+        self.display_message(self.inflicted_message)
+
     def after_infliction(self):
+        self.display_inflicted_message()
         if len(self.overrides):
             for effect in self.inflicted_upon.effects:
                 if effect is self:
@@ -508,10 +551,27 @@ class EffectInterface:
                 overridden_effects = [tag for tag in effect.tags if tag in self.overrides]
                 if len(overridden_effects):
                     effect.end_effect()
+        self.animation()
         self.inflicted_upon.recalculate()
 
-    def display_inflicted_message(self):
-        pass
+    def display_message(self, message: str="", font: str="gen4", size: int=BATTLE_TEXT_SIZE["medium"], color=(0,0,0,255)):
+        if len(message):
+            try:
+                user = self.inflicted_by.get_name()
+                user_possessive = user + "'s$DEFAULT" 
+                user += "$DEFAULT"
+            except AttributeError:
+                user = ""
+                user_possessive = ""
+            try:
+                target = self.inflicted_upon.get_name()
+                target_possessive = target + "'s$DEFAULT" 
+                target += "$DEFAULT"
+            except AttributeError:
+                target = ""
+                target_possessive = ""
+            message = message.replace("USER'S", user_possessive).replace("TARGET'S", target_possessive).replace("USER", user).replace("TARGET", target)
+            self.game.display_message(message, font, size, color)
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         return input_value
@@ -530,16 +590,28 @@ class EffectInterface:
         self.inflicted_upon.remove_status(self)
 
     def on_removal(self):
+        if not self.inflicted_upon.is_fainted():
+            self.display_message(self.removal_message)
+
+    def animation(self):
         pass
 
     def __str__(self):
-        return f"{self.name} inflicted on {self.inflicted_upon.name} by {self.inflicted_by.name}'s {self.source.move.name}. Tags: {self.tags}"
+        try:
+            inflicted_on = self.inflicted_upon.name
+        except AttributeError:
+            inflicted_on = "N/A"
+        try:
+            inflicted_by = self.inflicted_by.name
+        except AttributeError:
+            inflicted_by = "N/A"
+        return f"{self.name} inflicted on {inflicted_by} by {inflicted_on}'s {self.source_name}. Tags: {self.tags}"
 
 @dataclass
 class LeechSeedEffectOptions:
-    lifetime: int = 1800,
-    damage: float = 1/32,
-    cooldown: int = 225,
+    lifetime: int = 1800
+    damage: float = 1/32
+    cooldown: int = 225
     grass_immune: bool = True
 class LeechSeedEffect(EffectInterface):
     def __init__(self,
@@ -549,8 +621,11 @@ class LeechSeedEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "LeechSeedEffect"
+        self.name = "Seeded"
         self.status_icon = "seeded"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was seeded!"
+        self.removal_message = "TARGET is no longer seeded."
         self.damage = options.damage # decimal representing portion of max hp
         self.damage_cooldown = options.cooldown
         self.max_damage_cooldown = options.cooldown
@@ -569,13 +644,6 @@ class LeechSeedEffect(EffectInterface):
             return False
         return super().can_inflict()
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was seeded!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def end_of_turn(self):
         if self.inflicted_by.is_fainted():
             self.lifetime = 0
@@ -587,7 +655,7 @@ class LeechSeedEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 health is sapped by Leech Seed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message(f"TARGET'S health is sapped by {self.source_name}!")
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             healing = self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -596,8 +664,8 @@ class LeechSeedEffect(EffectInterface):
 
 @dataclass
 class AquaRingEffectOptions:
-    lifetime: int = 1800,
-    healing: float = 1/64,
+    lifetime: int = 1800
+    healing: float = 1/64
     cooldown: int = 40,
 class AquaRingEffect(EffectInterface):
     def __init__(self,
@@ -609,6 +677,9 @@ class AquaRingEffect(EffectInterface):
              ):
         self.name = "Aqua Ring"
         self.status_icon = "healing"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET surrounded itself with a veil of water!"
+        self.removal_message = "The veil of water surrounding TARGET faded away."
         self.healing = options.healing # decimal representing portion of max hp
         self.healing_cooldown = options.cooldown
         self.max_healing_cooldown = options.cooldown
@@ -619,14 +690,7 @@ class AquaRingEffect(EffectInterface):
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
 
     def get_effect_value(self):
-        return -2000
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 surrounded itself with a veil of water!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+        return -2700
 
     def end_of_turn(self):
         if self.inflicted_by.is_fainted():
@@ -640,6 +704,117 @@ class AquaRingEffect(EffectInterface):
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
             self.inflicted_by.do_healing(self.inflicted_by, self.healing, silent=True)
+        return input_value
+
+class IngrainEffect(AquaRingEffect):
+    def __init__(self,
+             options: AquaRingEffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Ingrain"
+        self.status_icon = "healing"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
+        self.healing = options.healing # decimal representing portion of max hp
+        self.healing_cooldown = options.cooldown
+        self.max_healing_cooldown = options.cooldown
+        self.triggers = [EffectTrigger.END_OF_TURN, EffectTrigger.CHECK_FORCE_GROUNDED, EffectTrigger.MOVE_SPEED_MODIFICATION]
+        self.tags = [EffectTag.INGRAIN]
+        self.blocks = [EffectTag.INGRAIN, EffectTag.MAGNET_RISE, EffectTag.TELEKINESIS]
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+    
+    def get_effect_value(self):
+        return -2400
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.END_OF_TURN:
+            self.inflicted_by.do_healing(self.inflicted_by, self.healing, silent=True)
+        if effect == EffectTrigger.CHECK_FORCE_GROUNDED:
+            return True
+        if effect == EffectTrigger.MOVE_SPEED_MODIFICATION:
+            return input_value / 2
+        return input_value
+
+# replace this with more specific effects ie smack down
+class GroundedEffect(EffectInterface):
+    def __init__(self,
+             options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Grounded"
+        self.status_icon = "grounded"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
+        self.triggers = [EffectTrigger.CHECK_FORCE_GROUNDED]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+    
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.CHECK_FORCE_GROUNDED:
+            return True
+        return input_value
+
+class MagnetRiseEffect(EffectInterface):
+    def __init__(self,
+             options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Magnet Rise"
+        self.status_icon = "magnet rise"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET levitated with electromagnetism!"
+        self.removal_message = "TARGET'S electromagnetism wore off."
+        self.triggers = [EffectTrigger.CHECK_LEVITATING]
+        self.tags = [EffectTag.MAGNET_RISE]
+        self.blocks = [EffectTag.MAGNET_RISE]
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+    
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.CHECK_LEVITATING:
+            return True
+        return input_value
+
+class TelekinesisEffect(EffectInterface):
+    def __init__(self,
+             options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Telekinesis"
+        self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was hurled into the air!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        self.triggers = [EffectTrigger.CHECK_LEVITATING, EffectTrigger.ON_TARGETED_BY_MOVE]
+        self.tags = [EffectTag.TELEKINESIS]
+        self.blocks = [EffectTag.TELEKINESIS]
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+    
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.CHECK_LEVITATING:
+            return True
+        if effect == EffectTrigger.ON_TARGETED_BY_MOVE:
+            attack = kwargs["attack"]
+            if not attack.move.ohko:
+                attack.accuracy = 101
         return input_value
 
 @dataclass
@@ -656,8 +831,11 @@ class ProtectEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "ProtectEffect"
+        self.name = "Protect"
         self.status_icon = "protect"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET protected itself!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.activated = False
         self.activated_by = []
         self.triggers = [EffectTrigger.ON_TARGETED_BY_MOVE, EffectTrigger.AFTER_TARGETED_BY_MOVE]
@@ -671,9 +849,6 @@ class ProtectEffect(EffectInterface):
 
     def get_effect_value(self):
         return -900
-
-    def after_infliction(self):
-        super().after_infliction()
 
     def end_effect(self):
         if self.activated:
@@ -709,8 +884,11 @@ class EndureEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "EndureEffect"
+        self.name = "Endure"
         self.status_icon = "protect"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET braced inself!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.ON_TARGETED_BY_MOVE, EffectTrigger.AFTER_TARGETED_BY_MOVE]
         self.tags = [EffectTag.ENDURE]
         self.blocks = [EffectTag.ENDURE]
@@ -721,13 +899,6 @@ class EndureEffect(EffectInterface):
 
     def get_effect_value(self):
         return -600
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 braced itself!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def end_effect(self):
         if self.activated:
@@ -760,8 +931,11 @@ class DestinyBondEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "DestinyBondEffect"
+        self.name = "Destiny Bond"
         self.status_icon = "destiny bond"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET is trying to take its foe down with it!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.ON_FAINT]
         self.tags = []
         self.blocks = []
@@ -772,13 +946,6 @@ class DestinyBondEffect(EffectInterface):
 
     def get_effect_value(self):
         return -1200
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is trying to take its foe down with it!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_FAINT:
@@ -803,8 +970,11 @@ class GrudgeEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "GrudgeEffect"
+        self.name = "Grudge"
         self.status_icon = "destiny bond"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET wants the foe to bear a grudge!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.ON_FAINT]
         self.tags = []
         self.blocks = []
@@ -815,13 +985,6 @@ class GrudgeEffect(EffectInterface):
 
     def get_effect_value(self):
         return -1200
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 wants the foe to bear a grudge!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_FAINT:
@@ -835,7 +998,7 @@ class GrudgeEffect(EffectInterface):
                         lifetime = honse_data.A_LOT_OF_FRAMES,
                         locked_moves= [attack.move])
                     MoveLockEffect(options, self.game, self.source, self.inflicted_upon, attacker)
-                    self.game.display_message(f"{attack.move.name} was locked due to the grudge!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                    self.display_message(f"{attack.move.name} was locked due to the grudge!")
         return input_value
 
 class DefenseCurlEffect(EffectInterface):
@@ -846,8 +1009,11 @@ class DefenseCurlEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.status_icon = "defense curl"
-        self.name = "DefenseCurl"
+        self.status_icon = ""
+        self.name = "Defense Curl"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.triggers = []
         self.tags = [EffectTag.DEFENSE_CURL]
         self.blocks = []
@@ -867,16 +1033,16 @@ class CenterOfAttentionEffect(EffectInterface):
              inflicted_upon=None
              ):
         self.status_icon = "spotlight"
-        self.name = "CenterOfAttentionEffect"
+        self.name = "Center of Attention"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET became the center of attention!"
+        self.removal_message = "TARGET is no longer the center of attention"
         self.triggers = []
         self.tags = [EffectTag.CENTER_OF_ATTENTION]
         self.blocks = []
         self.overrides = []
         self.radius = options.radius
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 became the center of attention!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def instant_effect(self):
         # only one center of attention at a time
@@ -886,7 +1052,6 @@ class CenterOfAttentionEffect(EffectInterface):
                     continue
                 if EffectTag.CENTER_OF_ATTENTION in effect.tags:
                     effect.end_effect()
-        self.display_inflicted_message()
         options = HazardOptions(
             # the lifetime is set to a lot of frames but the hazard will be ended when this effect wears off
             lifetime=honse_data.A_LOT_OF_FRAMES,
@@ -896,11 +1061,13 @@ class CenterOfAttentionEffect(EffectInterface):
             active_radius_growth_time=1,
             color=(255,255,0,85),
             active_color=(255,255,255,32),
-            immune_timer=5,
-            immune_pokemon=[self.inflicted_upon]            )
+            immune_timer=15,
+            immune_pokemon=[self.inflicted_upon]
+            )
         self.hazard = CenterOfAttentionHazard(options, self.inflicted_upon.position, self.radius, self.game, self.source, self.inflicted_by)
 
     def on_removal(self):
+        super().on_removal()
         self.hazard.end_effect()
 
 @dataclass
@@ -908,90 +1075,50 @@ class BasicDamagingEffectOptions:
     lifetime: int = 1800
     damage: float = 1/32
     cooldown: int = 300
-    status_icon: str = ""
-    status_name: str = ""
-    tags: list = field(default_factory=list)
-    blocks: list = field(default_factory=list)
-    overrides: list = field(default_factory=list)
-    infliction_message: str = ""
-    activation_message: str = ""
-
-@dataclass
-class PoisonEffectOptions:
-    lifetime: int = 1800
-    damage: float = 1/16
-    cooldown: int = 300
-    badly_poisoned: bool = False
     damage_growth: float = 0
 
-CURSE_DEFAULT_OPTIONS = BasicDamagingEffectOptions(damage=1/4,
-                                                   cooldown=1350,
-                                                   lifetime=5400,
-                                                   status_icon="curse",
-                                                   status_name="CurseEffect",
-                                                   tags=[EffectTag.CURSE],
-                                                   blocks=[EffectTag.CURSE],
-                                                   infliction_message="USER cut its HP to curse TARGET!",
-                                                   activation_message="TARGET is hurt by the curse!")
-TOXIC_DEFAULT_OPTIONS = PoisonEffectOptions(damage=1/64, damage_growth=1/64, cooldown=225, badly_poisoned=True)
-class DamagingVolatileEffect(EffectInterface):
-    def __init__(self,
-             options: BasicDamagingEffectOptions,
-             game=None,
-             source=None,
-             inflicted_by=None,
-             inflicted_upon=None
-             ):
-        self.status_icon = options.status_icon
-        self.name = options.status_name
-        self.damage = options.damage # decimal representing portion of max hp
-        self.damage_cooldown = options.cooldown
-        self.max_damage_cooldown = options.cooldown
-        self.triggers = [EffectTrigger.END_OF_TURN]
-        self.tags = options.tags
-        self.blocks = options.blokcs
-        self.overrides = options.overrides
-        self.infliction_message = options.infliction_message
-        self.activation_message = options.activation_message
-        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+POISON_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 1800,
+    damage = 1/16,
+    cooldown = 300
+    )
 
-    def get_effect_value(self):
-        damage = self.damage * (self.max_lifetime / self.max_damage_cooldown)
-        return honse_data.MAX_EFFECT_VALUE * damage
+TOXIC_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 1200,
+    damage = 1/32,
+    cooldown = 150,
+    damage_growth = 1/128
+    )
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
+BURN_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 1800,
+    damage = 1/32,
+    cooldown = 300
+    )
 
-    def display_inflicted_message(self):
-        self.display_message(self.infliction_message)
+SEED_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 1800,
+    damage = 1/32,
+    cooldown = 225
+    )
 
-    def display_message(self, message):
-        if len(message):
-            try:
-                user = self.inflicted_by.name
-            except AttributeError:
-                user = ""
-            try:
-                target = self.inflicted_upon.name
-            except AttributeError:
-                target = ""
-            message = message.replace("USER", user).replace("TARGET", target)
-            self.game.display_message(message, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+AQUA_RING_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 1800,
+    damage = 1/64,
+    cooldown = 40
+    )
 
-    def end_of_turn(self):
-        self.damage_cooldown -= 1
-        if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
-            self.activate(EffectTrigger.END_OF_TURN, None)
-            self.damage_cooldown = self.max_damage_cooldown
+CURSE_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 60,
+    damage = 1/4,
+    cooldown = 900
+    )
 
-    def activate(self, effect: EffectTrigger, input_value, **kwargs):
-        if effect == EffectTrigger.END_OF_TURN:
-            self.display_message(self.activation_message)
-            damage = self.inflicted_upon.max_hp * self.damage
-            damage = min(damage, self.inflicted_upon.hp)
-            self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
-        return input_value
+BIND_DEFAULT_OPTIONS = BasicDamagingEffectOptions(
+    lifetime = 1200,
+    damage = 1/32,
+    cooldown = 240
+    )
 
 class BurnEffect(EffectInterface):
     def __init__(self,
@@ -1002,7 +1129,10 @@ class BurnEffect(EffectInterface):
              inflicted_upon=None
              ):
         self.status_icon = "burn"
-        self.name = "BurnEffect"
+        self.name = "Burn"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was burned!"
+        self.removal_message = f"TARGET'S burn wore off."
         self.damage = options.damage # decimal representing portion of max hp
         self.damage_cooldown = options.cooldown
         self.max_damage_cooldown = options.cooldown
@@ -1025,13 +1155,6 @@ class BurnEffect(EffectInterface):
             return False
         return super().can_inflict()
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was burned!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def end_of_turn(self):
         self.damage_cooldown -= 1
         if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
@@ -1040,7 +1163,7 @@ class BurnEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its burn!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message("TARGET was hurt by its burn!")
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1050,15 +1173,7 @@ class BurnEffect(EffectInterface):
                 return self.stats[stat]
         return input_value
 
-THAW_ON_USE = [
-    "Flame Wheel",
-    "Sacred Fire",
-    "Flare Blitz",
-    "Fusion Flare",
-    "Scald",
-    "Steam Eruption",
-    "Burn Up"
-    ]
+
 THAW_ON_HIT = [
     "Scald",
     "Steam Eruption"
@@ -1073,7 +1188,10 @@ class FreezeEffect(EffectInterface):
              inflicted_upon=None
              ):
         self.status_icon = "freeze"
-        self.name = "FreezeEffect"
+        self.name = "Freeze"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was frozen!"
+        self.removal_message = "TARGET was thawed!"
         self.damage = options.damage # decimal representing portion of max hp
         self.damage_cooldown = options.cooldown
         self.max_damage_cooldown = options.cooldown
@@ -1095,13 +1213,6 @@ class FreezeEffect(EffectInterface):
             return False
         return super().can_inflict()
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was frozen!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def end_of_turn(self):
         self.damage_cooldown -= 1
         if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
@@ -1110,7 +1221,7 @@ class FreezeEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its frostbite!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message("TARGET is hurt by its frostbite!")
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1122,26 +1233,71 @@ class FreezeEffect(EffectInterface):
         elif effect == EffectTrigger.ON_HIT_BY_MOVE:
             attack = kwargs["attack"]
             if attack.type.name == "Fire" or attack.move.name in THAW_ON_HIT:
-                self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was thawed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 self.end_effect()
         elif effect == EffectTrigger.ON_USE_MOVE:
             attack = kwargs["attack"]
-            if attack.move.name in THAW_ON_USE:
-                self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was thawed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            if attack.move.has_flag(MoveFlags.DEFROST):
                 self.end_effect()
         return input_value
 
 class PoisonEffect(EffectInterface):
     def __init__(self,
-             options: PoisonEffectOptions,
+             options: BasicDamagingEffectOptions,
              game=None,
              source=None,
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.status_icon = "toxic" if options.badly_poisoned else "poison"
-        self.badly_poisoned = options.badly_poisoned
-        self.name = "PoisonEffect"
+        self.status_icon = "poison"
+        self.name = "Poison"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was poisoned!"
+        self.removal_message = f"TARGET'S poison wore off."
+        self.damage = options.damage # decimal representing portion of max hp
+        self.current_damage = self.damage
+        self.damage_cooldown = options.cooldown
+        self.max_damage_cooldown = options.cooldown
+        self.triggers = [EffectTrigger.END_OF_TURN]
+        self.tags = [EffectTag.NON_VOLATILE]
+        self.blocks = [EffectTag.NON_VOLATILE]
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def get_effect_value(self):
+        return 600
+
+    def can_inflict(self):
+        if pokemon_types["Poison"] in self.inflicted_upon.get_types() or pokemon_types["Steel"] in self.inflicted_upon.get_types():
+            return False
+        return super().can_inflict()
+
+    def end_of_turn(self):
+        self.damage_cooldown -= 1
+        if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
+            self.activate(EffectTrigger.END_OF_TURN, None)
+            self.damage_cooldown = self.max_damage_cooldown
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.END_OF_TURN:
+            self.display_message("TARGET was hurt by its poison!")
+            damage = self.inflicted_upon.max_hp * self.current_damage
+            damage = min(damage, self.inflicted_upon.hp)
+            self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
+        return input_value
+
+class ToxicEffect(EffectInterface):
+    def __init__(self,
+             options: BasicDamagingEffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.status_icon = "toxic"
+        self.name = "Toxic"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was badly poisoned!"
+        self.removal_message = f"TARGET'S poison wore off."
         self.damage = options.damage # decimal representing portion of max hp
         self.damage_growth = options.damage_growth
         self.current_damage = self.damage
@@ -1161,14 +1317,6 @@ class PoisonEffect(EffectInterface):
             return False
         return super().can_inflict()
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        status_name = "badly poisoned" if self.badly_poisoned else "poisoned"
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was {status_name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def end_of_turn(self):
         self.damage_cooldown -= 1
         if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
@@ -1177,7 +1325,7 @@ class PoisonEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its poison!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message("TARGET was hurt by its poison!")
             damage = self.inflicted_upon.max_hp * self.current_damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1186,27 +1334,28 @@ class PoisonEffect(EffectInterface):
 
 class ParalysisEffect(EffectInterface):
     def __init__(self,
-             options: None,
+             options: EffectOptions,
              game=None,
              source=None,
              inflicted_by=None,
              inflicted_upon=None
              ):
         self.status_icon = "paralysis"
-        self.name = "ParalysisEffect"
+        self.name = "Paraylsis"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was paralyzed! Moving may hurt it!"
+        self.removal_message = f"TARGET'S paralysis wore off."
         self.damage = 1/16 # decimal representing portion of max hp
         self.procs_remaining = 4
         self.stats = {"SPE": 0.5}
-        self.move_speed_modifier = 0.5
         self.triggers = [
             EffectTrigger.AFTER_USE_MOVE,
-            EffectTrigger.STAT_MODIFICATION,
-            EffectTrigger.MOVE_SPEED_MODIFICATION
+            EffectTrigger.STAT_MODIFICATION
             ]
         self.tags = [EffectTag.NON_VOLATILE]
         self.blocks = [EffectTag.NON_VOLATILE]
         self.overrides = []
-        super().__init__(game, source, inflicted_by, inflicted_upon)
+        super().__init__(game, source, inflicted_by, inflicted_upon, options.lifetime)
         
     def get_effect_value(self):
         return 600
@@ -1219,21 +1368,14 @@ class ParalysisEffect(EffectInterface):
             return False
         return super().can_inflict()
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
     def update(self):
         if self.procs_remaining <= 0:
             self.lifetime = 0
         super().update()
 
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was paralyzed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.AFTER_USE_MOVE:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by its paralysis!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message("TARGET was hurt by paralysis!")
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1243,8 +1385,6 @@ class ParalysisEffect(EffectInterface):
             if stat in self.stats:
                 return self.stats[stat]
             return input_value
-        elif effect == EffectTrigger.MOVE_SPEED_MODIFICATION:
-            return input_value * self.move_speed_modifier
         return input_value
 
 class PartiallyTrappedEffect(EffectInterface):
@@ -1256,11 +1396,14 @@ class PartiallyTrappedEffect(EffectInterface):
              inflicted_upon=None
              ):
         self.status_icon = "bound"
-        self.name = "PartiallyTrappedEffect"
+        self.name = "Bound"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = f"TARGET was trapped by {self.source_name}!"
+        self.removal_message = f"TARGET was freed from {self.source_name}."
         self.damage = options.damage # decimal representing portion of max hp
         self.damage_cooldown = options.cooldown
         self.max_damage_cooldown = options.cooldown
-        self.move_speed_modifier = 0.5
+        self.move_speed_modifier = 1/4
         self.triggers = [
             EffectTrigger.END_OF_TURN,
             EffectTrigger.MOVE_SPEED_MODIFICATION
@@ -1276,13 +1419,6 @@ class PartiallyTrappedEffect(EffectInterface):
     def can_inflict(self):
         return super().can_inflict()
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was trapped by {self.source.move.name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def end_of_turn(self):
         self.damage_cooldown -= 1
         if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
@@ -1291,7 +1427,7 @@ class PartiallyTrappedEffect(EffectInterface):
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.END_OF_TURN:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is hurt by {self.source.move.name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message(f"TARGET is hurt by {self.source_name}!")
             damage = self.inflicted_upon.max_hp * self.damage
             damage = min(damage, self.inflicted_upon.hp)
             self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -1308,8 +1444,11 @@ class ConfusionEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "ConfusionEffect"
+        self.name = "Confusion"
         self.status_icon = "confused"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET became confused!"
+        self.removal_message = "TARGET snapped out of confusion."
         self.confusion_chance = 1/3
         self.triggers = [EffectTrigger.ON_TRY_USE_MOVE]
         self.tags = [EffectTag.CONFUSION]
@@ -1320,24 +1459,87 @@ class ConfusionEffect(EffectInterface):
     def get_effect_value(self):
         return 600
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 became confused!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_TRY_USE_MOVE:
-            self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 is confused!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message("TARGET is confused!")
             if random.random() <= self.confusion_chance:
-                self.game.display_message(f"It hurt itself in confusion!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                self.display_message("It hurt itself in confusion!")
                 attack = Attack(UNOBTAINABLE_MOVES["confusion damage"], self.inflicted_upon, self.inflicted_upon, True)
                 damage, crit = damage_formula(attack, self.inflicted_upon, self.inflicted_upon)
                 self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
                 return True
-            else:
-                return False
+        return input_value
+
+class PowderEffect(EffectInterface):
+    def __init__(self,
+             options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Powder"
+        self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was covered in powder!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        self.triggers = [EffectTrigger.AFTER_ON_USE_MOVE]
+        self.tags = [EffectTag.POWDER]
+        self.blocks = [EffectTag.POWDER]
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+        
+    def get_effect_value(self):
+        return 300
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.AFTER_ON_USE_MOVE:
+            if kwargs["attack"].type == pokemon_types["Fire"] and self.game.weather != Weather.HEAVY_RAIN:
+                kwargs["attack"].success = False
+                kwargs["attack"].failure_message = ""
+                self.display_message("When the flame touched the powder on TARGET, it exploded!")
+                damage = self.inflicted_upon.max_hp / 4
+                self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
+        return input_value
+
+class CurseEffect(EffectInterface):
+    def __init__(self,
+             options: BasicDamagingEffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.status_icon = "curse"
+        self.name = "Curse"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "USER cut its HP to curse TARGET!"
+        self.removal_message = f"TARGET is no longer cursed."
+        self.damage = options.damage # decimal representing portion of max hp
+        self.current_damage = self.damage
+        self.damage_cooldown = options.cooldown
+        self.max_damage_cooldown = options.cooldown
+        self.triggers = [EffectTrigger.END_OF_TURN]
+        self.tags = [EffectTag.CURSE]
+        self.blocks = [EffectTag.CURSE]
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def get_effect_value(self):
+        return 600
+
+    def end_of_turn(self):
+        self.damage_cooldown -= 1
+        if self.damage_cooldown <= 0 and not self.inflicted_upon.is_fainted():
+            self.activate(EffectTrigger.END_OF_TURN, None)
+            self.damage_cooldown = self.max_damage_cooldown
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.END_OF_TURN:
+            self.display_message("TARGET was hurt by the curse!")
+            damage = self.inflicted_upon.max_hp * self.current_damage
+            damage = min(damage, self.inflicted_upon.hp)
+            self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
         return input_value
 
 @dataclass
@@ -1354,19 +1556,15 @@ class SleepEffect(EffectInterface):
              ):
         self.name = "SleepEffect"
         self.status_icon = "sleep"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET fell asleep!"
+        self.removal_message = f"TARGET woke up."
         self.triggers = [EffectTrigger.MOVE_LOCK]
         self.tags = [EffectTag.NON_VOLATILE]
-        self.blocks = [EffectTag.NON_VOLATILE]
-        self.overrides = []
+        self.blocks = [EffectTag.NON_VOLATILE, EffectTag.DROWSY]
+        self.overrides = [EffectTag.DROWSY]
         lifetime = random.randint(options.min_lifetime, options.max_lifetime)
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=lifetime)
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-        
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 fell asleep!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def get_effect_value(self):
         return 600
@@ -1376,6 +1574,40 @@ class SleepEffect(EffectInterface):
             return True
         return input_value
 
+
+class YawnEffect(EffectInterface):
+    def __init__(self,
+             options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        # yawn's lifetime works differently
+        # to prevent effects that would remove yawn artifically from causing sleep
+        # yawn has infinite lifetime and the lifetime from EffectOptions actually is how long until yawn puts the target to sleep
+        # and then after putting the target to sleep, yawn goes away
+        self.name = "Yawn"
+        self.status_icon = "drowsy"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET grew drowsy!"
+        self.removal_message = ""
+        self.triggers = []
+        self.tags = [EffectTag.DROWSY]
+        self.blocks = []
+        self.overrides = []
+        self.time_until_sleep = options.lifetime
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon)
+
+    def get_effect_value(self):
+        return 600
+
+    def end_of_turn(self):
+        self.time_until_sleep -= 1
+        if self.time_until_sleep <= 0 and not self.inflicted_upon.is_fainted():
+            options = SleepEffectOptions()
+            SleepEffect(options, self.game, self.source, self.inflicted_by, self.inflicted_upon)
+            self.end_effect()
 @dataclass
 class MoveLockOptions:
     lifetime: int = 300
@@ -1389,8 +1621,11 @@ class MoveLockEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "MoveLockEffect"
+        self.name = "Locked Move"
         self.status_icon = "locked move"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.locked_moves = options.locked_moves
         self.triggers = [EffectTrigger.MOVE_LOCK]
         self.tags = []
@@ -1399,7 +1634,7 @@ class MoveLockEffect(EffectInterface):
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
         
     def get_effect_value(self):
-        return self.lifetime // -4
+        return self.lifetime // 2
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.MOVE_LOCK:
@@ -1417,17 +1652,20 @@ class ImprisonEffect(MoveLockEffect):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "MoveLockEffect"
+        self.name = "Imprison"
         self.status_icon = "locked move"
-        self.locked_moves = inflicted_upon.current_moves
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was imprisoned! It can no longer use moves that USER knows!"
+        self.removal_message = f"TARGET is no longer imprisoned."
+        try:
+            self.locked_moves = inflicted_by.current_moves
+        except AttributeError:
+            self.locked_moves = []
         self.triggers = [EffectTrigger.MOVE_LOCK]
         self.tags = []
         self.blocks = []
         self.overrides = []
-        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
-        
-    def get_effect_value(self):
-        return self.lifetime // -4
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.MOVE_LOCK:
@@ -1437,6 +1675,168 @@ class ImprisonEffect(MoveLockEffect):
                 return True
         return input_value
 
+class HealBlockEffect(MoveLockEffect):
+    def __init__(self,
+        options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Heal Block"
+        self.status_icon = "locked move"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was prevented from healing!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        self.locked_moves = []
+        self.triggers = [EffectTrigger.MOVE_LOCK]
+        self.tags = [EffectTag.HEAL_BLOCK]
+        self.blocks = [EffectTag.HEAL_BLOCK]
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.MOVE_LOCK:
+            if kwargs["move"].has_flag(MoveFlags.HEAL):
+                return True
+        return input_value
+
+class DisableEffect(MoveLockEffect):
+    def __init__(self,
+        options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Disable"
+        self.status_icon = "locked move"
+        try:
+            self.locked_moves = [inflicted_upon.last_attack_used.move]
+            disabled_move = self.locked_moves[0].name
+        except AttributeError:
+            self.locked_moves = []
+            disabled_move = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = f"TARGET'S {disabled_move} was disabled!"
+        self.removal_message = f"TARGET is no longer disabled."
+        self.triggers = [EffectTrigger.MOVE_LOCK]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def can_inflict(self):
+        if len(self.locked_moves) == 0:
+            return False
+        return super().can_inflict()
+
+class TauntEffect(MoveLockEffect):
+    def __init__(self,
+        options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Taunt"
+        self.status_icon = "taunt"
+        self.locked_moves = [move for move in MOVES.values() if move.category == MoveCategories.STATUS]
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = f"TARGET fell for the taunt!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        self.triggers = [EffectTrigger.MOVE_LOCK]
+        self.tags = [EffectTag.TAUNT]
+        self.blocks = [EffectTag.TAUNT]
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+class TormentEffect(MoveLockEffect):
+    def __init__(self,
+        options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Torment"
+        self.status_icon = "taunt"
+        try:
+            self.locked_moves = [inflicted_upon.last_successful_attack_used.move]
+        except AttributeError:
+            self.locked_moves = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = f"TARGET was subjected to torment!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        self.triggers = [EffectTrigger.MOVE_LOCK, EffectTrigger.AFTER_MOVE_USE_COOLDOWN]
+        self.tags = [EffectTag.TORMENT]
+        self.blocks = [EffectTag.TORMENT]
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.MOVE_LOCK:
+            if kwargs["move"] in self.locked_moves:
+                return True
+        if effect == EffectTrigger.AFTER_MOVE_USE_COOLDOWN:
+            try:
+                self.locked_moves = [self.inflicted_upon.last_successful_attack_used.move]
+            except AttributeError:
+                self.locked_moves = []
+        return input_value
+
+class SilencedEffect(MoveLockEffect):
+    def __init__(self,
+        options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Silenced"
+        self.status_icon = "silenced"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was silenced!"
+        self.removal_message = "TARGET is no longer silenced."
+        self.triggers = [EffectTrigger.MOVE_LOCK]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.MOVE_LOCK:
+            if kwargs["move"].has_flag(MoveFlags.SOUND):
+                return True
+        return input_value
+
+class EncoreEffect(MoveLockEffect):
+    def __init__(self,
+        options: EffectOptions,
+             game=None,
+             source=None,
+             inflicted_by=None,
+             inflicted_upon=None
+             ):
+        self.name = "Encore"
+        self.status_icon = "locked move"
+        try:
+            self.locked_moves = [move for move in MOVES.values() if move is not inflicted_upon.last_attack_used.move]        
+        except AttributeError:
+            self.locked_moves = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET received an encore!"
+        self.removal_message = f"TARGET'S encore ended."
+        self.triggers = [EffectTrigger.MOVE_LOCK]
+        self.tags = [EffectTag.ENCORE]
+        self.blocks = [EffectTag.ENCORE]
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def can_inflict(self):
+        if len(self.locked_moves) == 0:
+            return False
+        return super().can_inflict()
 
 class BideEffect(EffectInterface):
     def __init__(self,
@@ -1448,6 +1848,9 @@ class BideEffect(EffectInterface):
              ):
         self.name = "BideEffect"
         self.status_icon = "locked move"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET began storing energy!"
+        self.removal_message = ""
         self.triggers = [EffectTrigger.MOVE_LOCK, EffectTrigger.ON_HIT_BY_MOVE, EffectTrigger.ON_USE_MOVE, EffectTrigger.AFTER_USE_MOVE]
         self.tags = [EffectTag.BIDE]
         self.blocks = [EffectTag.BIDE]
@@ -1478,16 +1881,18 @@ class MustRechargeEffect(MoveLockEffect):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        options = MoveLockOptions(lifetime=options.lifetime)
-        super().__init__(options=options, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon)
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
+        self.name = "Must Recharge"
+        self.status_icon = "locked move"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET must recharge!"
+        self.removal_message = ""
+        self.locked_moves = True
+        self.triggers = [EffectTrigger.MOVE_LOCK]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        EffectInterface.__init__(self, game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
         
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 must recharge!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def get_effect_value(self):
         # having the recharge status decrease cooldowns for being a negative status feels weird, so this is 0
         return 0
@@ -1512,6 +1917,9 @@ class StatStageEffect(EffectInterface):
         else:
             self.status_icon = "stat drop"
         self.stats = options.stats
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = f"The stat changes from {self.source_name} wore off on TARGET."
         self.triggers = [EffectTrigger.STAGE_MODIFICATION]
         self.tags = []
         self.blocks = []
@@ -1522,9 +1930,17 @@ class StatStageEffect(EffectInterface):
         stage_total = sum(list(self.stats.values()))
         return get_stage_cooldown_value(stage_total)
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
+    def animation(self):
+        if self.status_icon == "stat boost":
+            honse_particles.buff_animation(self.game,
+                                           self.inflicted_upon.position[0],
+                                           self.inflicted_upon.position[1],
+                                           self.inflicted_upon)
+        else:
+            honse_particles.debuff_animation(self.game,
+                                             self.inflicted_upon.position[0],
+                                             self.inflicted_upon.position[1],
+                                             self.inflicted_upon)
 
     def display_inflicted_message(self):
         for stat, stage in self.stats.items():
@@ -1540,7 +1956,7 @@ class StatStageEffect(EffectInterface):
                     boost_descriptor += " sharply"
                 elif stage >= 3:
                     boost_descriptor += "drastically"
-            self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 {STAT_NAMES[stat].lower()} {boost_descriptor}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.display_message(f"TARGET'S {STAT_NAMES[stat].lower()} {boost_descriptor}!")
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.STAT_MODIFICATION:
@@ -1548,11 +1964,12 @@ class StatStageEffect(EffectInterface):
             if stat in self.stats:
                 return self.stats[stat]
         return input_value
-
+    
 @dataclass
 class CritRatioOptions:
     modifier: int
     lifetime: int = 1200
+    single_use: bool = False
     message: str = ""
 class CritRatioEffect(EffectInterface):
     def __init__(self,
@@ -1562,12 +1979,16 @@ class CritRatioEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "CritRatioEffect"
+        self.name = "Crit Boost"
         if options.modifier > 0:
-            self.status_icon = "stat boost"
+            self.status_icon = "crit boost"
         else:
             self.status_icon = "stat drop"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = options.message
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.modifier = options.modifier
+        self.single_use = options.single_use
         self.triggers = [EffectTrigger.CRIT_STAGE_MODIFICATION]
         self.tags = []
         self.blocks = []
@@ -1578,25 +1999,10 @@ class CritRatioEffect(EffectInterface):
     def get_effect_value(self):
         return -200 * self.modifier
 
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        if len(self.message):
-            try:
-                user = self.inflicted_by.name
-            except AttributeError:
-                user = ""
-            try:
-                target = self.inflicted_upon.name
-            except AttributeError:
-                target = ""
-            message = self.message.replace("USER", user).replace("TARGET", target)
-            self.game.display_message(message, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.CRIT_STAGE_MODIFICATION:
+            if self.single_use:
+                self.lifetime = 0
             return input_value + self.modifier
         return input_value
 
@@ -1615,10 +2021,15 @@ class MoveSpeedModificationEffect(EffectInterface):
             ):
         self.name = "MoveSpeedModificationEffect"
         self.modifier = options.modifier
+        self.source_name = "N/A" if source is None else source.move.name
         if self.modifier >= 1:
             self.status_icon = "stat boost"
+            self.inflicted_message = "TARGET was hastened!"
+            self.removal_message = f"The hastening effect from {self.source_name} wore off on TARGET."
         else:
             self.status_icon = "stat drop"
+            self.inflicted_message = "TARGET was slowed!"
+            self.removal_message = f"The slowing effect from {self.source_name} wore off on TARGET."
         self.triggers = [EffectTrigger.MOVE_SPEED_MODIFICATION]
         self.tags = []
         self.blocks = []
@@ -1630,17 +2041,6 @@ class MoveSpeedModificationEffect(EffectInterface):
             return 1/self.modifier * self.max_lifetime / 4
         else:
             return self.modifier * self.max_lifetime / -4
-
-    def after_infliction(self):
-        self.display_inflicted_message()
-        super().after_infliction()
-
-    def display_inflicted_message(self):
-        if self.modifier < 1:
-            boost_descriptor = "slowed"
-        else:
-            boost_descriptor = "hastened"
-        self.game.display_message(f"{self.inflicted_upon.get_name()}$#000000 was {boost_descriptor}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.MOVE_SPEED_MODIFICATION:
@@ -1656,8 +2056,11 @@ class DragEffect(EffectInterface):
             inflicted_upon=None
             ):
         self.name = "DragEffect"
-        self.modifier = options.modifier
         self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
+        self.modifier = options.modifier
         self.triggers = [EffectTrigger.DRAG_MODIFICATION]
         self.tags = []
         self.blocks = []
@@ -1680,6 +2083,9 @@ class AccelerationEffect(EffectInterface):
         self.name = "AccelerationEffect"
         self.modifier = options.modifier
         self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.triggers = [EffectTrigger.ACCELERATION_MODIFICATION]
         self.tags = []
         self.blocks = []
@@ -1689,6 +2095,31 @@ class AccelerationEffect(EffectInterface):
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ACCELERATION_MODIFICATION:
             return input_value * self.modifier
+        return input_value
+
+class LockOnEffect(EffectInterface):
+    def __init__(self,
+            options: EffectOptions,
+            game=None,
+            source=None,
+            inflicted_by=None,
+            inflicted_upon=None
+            ):
+        self.name = "DragEffect"
+        self.modifier = options.modifier
+        self.status_icon = "crit boost"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET took aim!"
+        self.removal_message = ""
+        self.triggers = [EffectTrigger.LOCK_ON_CHECK]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.LOCK_ON_CHECK:
+            return True
         return input_value
 @dataclass
 class CooldownReductionEffectOptions:
@@ -1704,6 +2135,9 @@ class CooldownReductionEffect(EffectInterface):
          ):
         self.name = "CooldownReductionEffect"
         self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET'S cooldowns were reduced!"
+        self.removal_message = ""
         self.triggers = [EffectTrigger.INSTANT]
         self.tags = []
         self.blocks = []
@@ -1715,12 +2149,8 @@ class CooldownReductionEffect(EffectInterface):
         return int(-2.25 * self.reduction_amount)
 
     def instant_effect(self):
-        self.display_inflicted_message()
         self.inflicted_upon.tick_cooldowns(self.reduction_amount)
 
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 cooldowns were reduced!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-        
 
 # inflicts a random stat buff
 class AcupressureEffect(EffectInterface):
@@ -1731,30 +2161,24 @@ class AcupressureEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "AcupressureEffect"
+        self.name = "Acupressure"
         self.stat_buff_lifetime = options.lifetime
         self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.triggers = [EffectTrigger.INSTANT]
         self.tags = []
         self.blocks = []
         self.overrides = []
-        self.reduction_amount = options.cooldown_reduction_amount
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=0)
         
     def get_effect_value(self):
         # i feel like this is worth less tahn 2 stages since you cant choose where it goes
         return get_stage_cooldown_value(1)
 
-    def display_inflicted_message(self):
-        pass
-
-    def instant_effect(self):
-        self.display_inflicted_message()
-        self.inflicted_upon.tick_cooldowns(self.reduction_amount)
-
     def infliction(self):
-        self.display_inflicted_message()
-        stat = random.choice("ATK", "DEF", "SPA", "SPD", "SPE")
+        stat = random.choice("ATK", "DEF", "SPA", "SPD", "SPE", "ACC", "EVA")
         stat_stage_options = StatOptions(
             lifetime=self.stat_buff_lifetime,
             stats={stat:2},
@@ -1764,15 +2188,38 @@ class AcupressureEffect(EffectInterface):
             game=self.game,
             inflicted_by=self.inflicted_by,
             inflicted_upon=self.inflicted_upon)
-        if stat == "SPE":
-            move_speed_options = MoveSpeedModificationEffectOptions(
-                lifetime=self.stat_buff_lifetime,
-                modifier=1.5)
-            MoveSpeedModificationEffect(
-                options=move_speed_options,
-                game=self.game,
-                inflicted_by=self.inflicted_by,
-                inflicted_upon=self.inflicted_upon)
+
+@dataclass
+class RandomStatusEffectOptions:
+    statuses: list
+class RandomStatusEffect(EffectInterface):
+    def __init__(self,
+        options: RandomStatusEffectOptions,
+        game=None,
+        source=None,
+        inflicted_by=None,
+        inflicted_upon=None
+        ):
+        self.name = "Random Status"
+        self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
+        self.triggers = [EffectTrigger.INSTANT]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        self.statuses = options.statuses
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=0)
+        
+    def get_effect_value(self):
+        return 300
+
+    def infliction(self):
+        status = random.choice(self.statuses)
+        effect = status["effect"]
+        options = status["options"]
+        effect(options, self.game, self.inflicted_by, self.inflicted_upon)
 
 @dataclass
 class HazardClearEffectOptions:
@@ -1788,6 +2235,9 @@ class HazardClearEffect(EffectInterface):
         ):
         self.name = "HazardClearEffect"
         self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.triggers = [EffectTrigger.INSTANT]
         self.tags = []
         self.blocks = []
@@ -1799,13 +2249,10 @@ class HazardClearEffect(EffectInterface):
         
     def get_effect_value(self):
         if self.clear_friendly_hazards:
-            return -300
+            return -375
         else:
-            return -400
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_by.get_name()}$#000000 cleared away {self.hazards_cleared} nearby hazard{'s' if self.hazards_cleared != 1 else ''}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
+            return -450
+        
     def instant_effect(self):
         for hazard in self.game.hazards:
             if hazard.defoggable:
@@ -1814,7 +2261,10 @@ class HazardClearEffect(EffectInterface):
                 if np.linalg.norm(self.inflicted_by.position - hazard.position) <= self.radius:
                     hazard.end_effect()
                     self.hazards_cleared += 1
-        self.display_inflicted_message()
+        if self.hazards_cleared == 0:
+            self.success = False
+        else:
+            self.inflicted_message = f"USER cleared away {self.hazards_cleared} nearby hazard{'s' if self.hazards_cleared != 1 else ''}!"
 
 class AggregateEffect(HazardClearEffect):
     def __init__(self,
@@ -1829,8 +2279,8 @@ class AggregateEffect(HazardClearEffect):
     def instant_effect(self):
         super().instant_effect()
         if self.hazards_cleared > 0:
-            healing = self.inflicted_by.max_hp // 4
-            self.inflicted_by.do_healing(self.inflicted_by, self.inflicted_by)
+            healing = self.inflicted_by.max_hp / 4
+            self.inflicted_by.do_healing(self.inflicted_by, healing)
 
 class HealBellEffect(EffectInterface):
     def __init__(self,
@@ -1840,24 +2290,61 @@ class HealBellEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "HazardClearEffect"
+        self.name = "Heal Bell"
         self.status_icon = ""
         self.triggers = [EffectTrigger.INSTANT]
         self.tags = []
         self.blocks = []
         self.overrides = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=0)
         
     def get_effect_value(self):
         return -900
 
     def instant_effect(self):
+        did_something = False
         for character in self.game.characters:
             if character.same_team(self.inflicted_by):
                 non_volatile_status = character.get_non_volatile_status()
                 if non_volatile_status is not None:
-                    self.game.display_message(f"{character.name}'s status was cured!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                     character.remove_status(non_volatile_status)
+                    did_something = True
+        if not did_something:
+            self.success = False
+
+class SparklingAriaEffect(EffectInterface):
+    def __init__(self,
+        options: EffectOptions|None,
+        game=None,
+        source=None,
+        inflicted_by=None,
+        inflicted_upon=None
+        ):
+        self.name = "Cure Status"
+        self.status_icon = ""
+        self.triggers = [EffectTrigger.INSTANT]
+        self.tags = []
+        self.blocks = []
+        self.overrides = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=0)
+        
+    def get_effect_value(self):
+        return -900
+
+    def instant_effect(self):
+        did_something = False
+        for effect in self.inflicted_upon.effects:
+            if type(effect) is BurnEffect:
+                self.inflicted_upon.remove_status(effect)
+                did_something = True
+        if not did_something:
+            self.success = False
 
 class BellyDrumEffect(EffectInterface):
     def __init__(self,
@@ -1867,26 +2354,159 @@ class BellyDrumEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "BellyDrumEffect"
+        self.name = "Belly Drum"
         self.status_icon = ""
         self.triggers = [EffectTrigger.INSTANT]
         self.tags = []
         self.blocks = []
         self.overrides = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET cut its own HP and maximized its attack!"
+        self.removal_message = ""
+        self.stat_buff_duration = options.lifetime
         super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=0)
         
     def get_effect_value(self):
         return -1500
 
-    def display_inflicted_message(self):
-        pass
+    def instant_effect(self):
+        damage = self.inflicted_upon.max_hp / 2
+        if self.inflicted_upon.hp > damage:
+            stats_options = StatOptions(
+                positive=True,
+                lifetime=3600,
+                stats={"ATK":12})
+            StatStageEffect(stats_options, self.game, self.source, self.inflicted_by, self.inflicted_upon)
+            self.inflicted_upon.do_damage(source=self.inflicted_by, damage=damage)
+        else:
+            self.success = False
+
+class SubstituteEffect(EffectInterface):
+    def __init__(self,
+        options: EffectOptions,
+        game=None,
+        source=None,
+        inflicted_by=None,
+        inflicted_upon=None
+        ):
+        self.name = "Substitute"
+        self.status_icon = "substitute"
+        self.triggers = [EffectTrigger.DAMAGE_SUBSTITUTE]
+        self.tags = [EffectTag.SUBSTITUTE]
+        self.blocks = [EffectTag.SUBSTITUTE]
+        self.overrides = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET put in a substitute!"
+        self.removal_message = "TARGET'S substitute faded."
+        self.health = 0
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+        
+    def get_effect_value(self):
+        return -2400
 
     def instant_effect(self):
-        damage = self.inflicted_upon.max_hp // 2
+        damage = self.inflicted_upon.max_hp / 4
         if self.inflicted_upon.hp > damage:
-            StatStageEffect(self.game, self.source, self.inflicted_by, self.inflicted_upon, lifetime=honse_data.STAT_BUFF_DURATION, stat="ATK", stage=13)
-            DamageEffect(self.game, self.source, self.inflicted_by, self.inflicted_upon, damage=1/2)
+            self.inflicted_upon.do_damage(source=self.inflicted_by, damage=damage)
+            self.health = damage
+        else:
+            self.success = False
 
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.DAMAGE_SUBSTITUTE:
+            self.health -= input_value
+            if self.health <= 0:
+                self.lifetime = 0
+        return input_value
+
+@dataclass
+class TransformEffectOptions:
+    target: "Character"
+    lifetime: int = 1800
+    
+class TransformEffect(EffectInterface):
+    def __init__(self,
+        options: TransformEffectOptions,
+        game=None,
+        source=None,
+        inflicted_by=None,
+        inflicted_upon=None
+        ):
+        self.name = "Transform"
+        self.status_icon = "transform"
+        self.triggers = [
+            EffectTrigger.TYPE_OVERRIDE,
+            EffectTrigger.MOVE_OVERRIDE,
+            EffectTrigger.TRANSFORM_STAT_OVERRIDE,
+            EffectTrigger.SPECIES_OVERRIDE,
+            EffectTrigger.WEIGHT_OVERRIDE,
+            EffectTrigger.AFTER_MOVE_USE_COOLDOWN
+            ]
+        self.tags = [EffectTag.TRANSFORM]
+        self.blocks = []
+        self.overrides = [EffectTag.TYPE_OVERRIDE, EffectTag.TRANSFORM]
+        self.transform_target = options.target
+        self.source_name = "N/A" if source is None else source.move.name
+        try:
+            transform_target_name = self.transform_target.get_name()
+        except AttributeError:
+            transform_target_name = ""
+        self.inflicted_message = f"TARGET transformed into {transform_target_name}$DEFAULT!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def after_infliction(self):
+        super().after_infliction()
+        # remove non-accuracy/evasion stat buffs
+        for effect in self.target.effects:
+            if type(effect) is StatStageEffect:
+                if "ACC" not in effect.stats and "EVA" not in effect.stats:
+                    effect.end_effect()
+                else:
+                    new_stats = {}
+                    if "ACC" in effect.stats:
+                        new_stats["ACC"] = effect.stats["ACC"]
+                    if "EVA" in effect.stats:
+                        new_stats["EVA"] = effect.stats["EVA"]
+                    effect.stats = new_stats
+        # overwrite stats
+        self.unmodified_stat_override = self.transform_target.current_unmodified_stats
+        new_boosts = {}
+        for stat in ["ATK", "DEF", "SPA", "SPD", "SPE"]:
+            stage = activate_effect(EffectTrigger.STAGE_MODIFICATION, self.transform_target, 0, {"stat":stat})
+            if stage != 0:
+                new_boosts[stat] = stage
+        if len(new_boosts):
+            positive = sum(list(new_boosts.values())) > 0
+            options = StatOptions(
+                positive=positive,
+                stats=new_boosts)
+            StatStageEffect(options, self.game, self.source, self.inflicted_by, self.inflicted_upon)
+        # overwrite moves
+        self.new_moves = self.transform_target.current_moves
+        # overwrite species
+        self.new_species = self.transform_target.current_species
+        # overwrite types
+        self.new_types = self.transform_target.current_types
+        # overwrite weight
+        self.new_weight = self.transform_target.current_weight
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.MOVE_OVERRIDE:
+            return self.new_moves
+        if effect == EffectTrigger.SPECIES_OVERRIDE:
+            return self.new_species
+        if effect == EffectTrigger.TYPE_OVERRIDE:
+            return self.new_types
+        if effect == EffectTrigger.WEIGHT_OVERRIDE:
+            return self.new_weight
+        if effect == EffectTrigger.TRANSFORM_STAT_OVERRIDE:
+            stat = kwargs["stat"]
+            return self.unmodified_stat_override[stat]
+        if effect == EffectTrigger.AFTER_MOVE_USE_COOLDOWN:
+            options = MoveLockOptions(lifetime=150)
+            MoveLockEffect(options, self.game, self.source, self.inflicted_by, self.inflicted_upon)
+        return input_value
+    
 @dataclass
 class TypeEffectOptions:
     lifetime: int = 1200
@@ -1899,8 +2519,11 @@ class TypeChangeEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "TypeChangeEffect"
+        self.name = "Type Change"
         self.status_icon = "type change"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET'S type changed!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.TYPE_OVERRIDE]
         self.tags = [EffectTag.TYPE_OVERRIDE]
         self.blocks = []
@@ -1910,9 +2533,6 @@ class TypeChangeEffect(EffectInterface):
 
     def get_effect_value(self):
         return 0
-
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_upon.get_name()}'s$#000000 type was changed!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.TYPE_OVERRIDE:
@@ -1931,8 +2551,11 @@ class TypeEffectivenessOverrideEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "TypeOverrideEffect"
+        self.name = "Type Effectiveness Override"
         self.status_icon = "identified"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.triggers = [EffectTrigger.TYPE_EFFECTIVENESS_OVERRIDE]
         self.tags = []
         self.blocks = []
@@ -1967,6 +2590,42 @@ class CamouflageEffect(TypeChangeEffect):
         super().__init__(options, game, source, inflicted_by, inflicted_upon)
 
 @dataclass
+class IdentifyEffectOptions:
+    lifetime: int = 1200
+    type_overrides: dict = field(default_factory=dict)
+    tags: list = field(default_factory=list)
+class IdentifyEffect(EffectInterface):
+    def __init__(self,
+        options: IdentifyEffectOptions,
+        game=None,
+        source=None,
+        inflicted_by=None,
+        inflicted_upon=None
+        ):
+        self.name = "Identify"
+        self.status_icon = "identified"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET was identified!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
+        self.triggers = [EffectTrigger.TYPE_EFFECTIVENESS_OVERRIDE, EffectTrigger.ON_TARGETED_BY_MOVE]
+        self.tags = options.tags
+        self.blocks = options.tags
+        self.overrides = []
+        self.type_overrides = options.type_overrides
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+
+    def get_effect_value(self):
+        return 0
+
+    def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.TYPE_EFFECTIVENESS_OVERRIDE:
+            input_value.update(self.type_overrides)
+        if effect == EffectTrigger.ON_TARGETED_BY_MOVE:
+            if self.inflicted_upon.current_evasion_stage > 0:
+                kwargs["attack"].ignore_evasion = True
+        return input_value
+
+@dataclass
 class RolloutEffectOptions:
     move_name: str
     lifetime: int = 1800
@@ -1982,12 +2641,15 @@ class RolloutEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "RolloutEffect"
+        self.name = "Rollout"
         self.status_icon = "locked move"
         self.triggers = [
             EffectTrigger.ON_USE_MOVE,
             EffectTrigger.MOVE_LOCK
             ]
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.tags = [EffectTag.ROLLOUT]
         self.modifier = 2
         self.blocks = []
@@ -2025,6 +2687,62 @@ class RolloutEffect(EffectInterface):
                         break
         return input_value
 
+class StockpileEffect(EffectInterface):
+    def __init__(self,
+        options: EffectOptions,
+        game=None,
+        source=None,
+        inflicted_by=None,
+        inflicted_upon=None
+        ):
+        self.name = "Stockpile"
+        # because stockpile can change icons, it must have a unique icon due to how status icons are displayed
+        self.status_icon = ""
+        self.triggers = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
+        self.tags = [EffectTag.STOCKPILE]
+        self.blocks = [EffectTag.STOCKPILE]
+        self.overrides = []
+        self.stacks = 0
+        super().__init__(game=game, source=source, inflicted_by=inflicted_by, inflicted_upon=inflicted_upon, lifetime=options.lifetime)
+        
+    def get_effect_value(self):
+        return -90
+
+    # when another stockpile effect is added, its combined using this function instead
+    def stack_stockpile(self, effect):
+        try:
+            if effect.source.move.name == "Stockpile":
+                options = StatOptions(
+                    positive = True,
+                    stats = {"DEF":1,"SPD":1})
+                StatStageEffect(options, self.game, effect.source, effect.inflicted_by, effect.inflicted_upon)
+        except AttributeError:
+            pass
+        self.lifetime = max(self.lifetime, effect.lifetime)
+        self.stacks += 1
+        if self.stacks > 3:
+            self.stacks = 3
+        if self.stacks == 3:
+            self.status_icon = "stockpile3"
+        elif self.stacks == 2:
+            self.status_icon = "stockpile2"
+        else:
+            self.status_icon = "stockpile1"
+
+    def after_infliction(self):
+        super().after_infliction()
+        self.stack_stockpile(self)
+
+    def can_inflict(self):
+        for effect in self.inflicted_upon.effects:
+            if EffectTag.STOCKPILE in effect.tags:
+                effect.stack_stockpile(self)
+                return False
+        return super().can_inflict()
+
 class ChargeEffect(EffectInterface):
     def __init__(self,
         options: EffectOptions,
@@ -2033,8 +2751,11 @@ class ChargeEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "ChargeEffect"
+        self.name = "Charge"
         self.status_icon = "charged"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET began charging power!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.ON_USE_MOVE]
         self.tags = [EffectTag.CHARGE]
         self.modifier = 2
@@ -2060,8 +2781,11 @@ class HelpingHandEffect(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "HelpingHandEffect"
+        self.name = "Helping Hand"
         self.status_icon = "stat boost"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "USER is ready to help TARGET!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.ON_USE_MOVE]
         self.tags = [EffectTag.HELPING_HAND]
         self.modifier = 1.5
@@ -2072,18 +2796,15 @@ class HelpingHandEffect(EffectInterface):
     def get_effect_value(self):
         return -300
 
-    def display_inflicted_message(self):
-        self.game.display_message(f"{self.inflicted_by.get_name()}$#000000 is ready to help {self.inflicted_upon.get_name()}$#000000!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
         if effect == EffectTrigger.ON_USE_MOVE:
             attack = kwargs["attack"]
-            if attack.category != MoveCategories.STATUS:
+            if attack.move.category != MoveCategories.STATUS:
                 attack.power *= self.modifier
                 self.lifetime = 0
         return input_value
 
-class Electrify(EffectInterface):
+class ElectrifyEffect(EffectInterface):
     def __init__(self,
         options: EffectOptions,
         game=None,
@@ -2091,8 +2812,11 @@ class Electrify(EffectInterface):
         inflicted_by=None,
         inflicted_upon=None
         ):
-        self.name = "ChargeEffect"
+        self.name = "Electrify"
         self.status_icon = "charged"
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = "TARGET'S next move became electric-type!"
+        self.removal_message = f"TARGET'S {self.source_name} wore off."
         self.triggers = [EffectTrigger.ON_USE_MOVE]
         self.tags = [EffectTag.ELECTRIFY]
         self.blocks = []
@@ -2106,6 +2830,7 @@ class Electrify(EffectInterface):
         if effect == EffectTrigger.ON_USE_MOVE:
             attack = kwargs["attack"]
             attack.type = pokemon_types["Electric"]
+            self.lifetime = 0
         return input_value
 
 @dataclass
@@ -2128,9 +2853,11 @@ class DamageEffect(EffectInterface):
         self.tags = []
         self.blocks = []
         self.overrides = []
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = options.message
+        self.removal_message = ""
         self.damage = options.damage
         self.percent_of_max_hp_damage = options.percent_of_max_hp_damage
-        self.message = options.message
         self.sound = options.sound
         super().__init__(game, source, inflicted_by, inflicted_upon, lifetime=0)
         
@@ -2139,24 +2866,9 @@ class DamageEffect(EffectInterface):
             return int(honse_data.MAX_EFFECT_VALUE * self.damage)
         else:
             return min(honse_data.MAX_EFFECT_VALUE, int(self.damage * 10))
-
-    def display_inflicted_message(self):
-        if len(self.message):
-            try:
-                user = self.inflicted_by.name
-            except AttributeError:
-                user = ""
-            try:
-                target = self.inflicted_upon.name
-            except AttributeError:
-                target = ""
-            message = self.message.replace("USER", user).replace("TARGET", target)
-            self.game.display_message(message, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
         
     def instant_effect(self):
-        self.display_inflicted_message()
-        damage = int(self.inflicted_upon.max_hp * self.damage)
-        damage = min(damage, self.inflicted_upon.hp)
+        damage = self.inflicted_upon.max_hp * self.damage
         if self.sound is not None:
             self.game.play_sound(self.sound)
         self.inflicted_upon.do_damage(self.inflicted_by, damage, silent=True)
@@ -2172,8 +2884,11 @@ class MoveEffect(EffectInterface):
              inflicted_by=None,
              inflicted_upon=None
              ):
-        self.name = "MoveEffect"
+        self.name = "Move"
         self.status_icon = ""
+        self.source_name = "N/A" if source is None else source.move.name
+        self.inflicted_message = ""
+        self.removal_message = ""
         self.triggers = [EffectTrigger.INSTANT]
         self.tags = []
         self.blocks = []
@@ -2181,11 +2896,7 @@ class MoveEffect(EffectInterface):
         self.move = options.move
         super().__init__(game, source, inflicted_by, inflicted_upon, lifetime=0)
 
-    def display_inflicted_message(self):
-        pass
-
     def instant_effect(self):
-        self.display_inflicted_message()
         self.move.on_use(self.inflicted_by, self.inflicted_upon, False)
 
 @dataclass
@@ -2213,7 +2924,7 @@ class Hazard:
                  game=None,
                  source=None,
                  inflicted_by: ... = None):
-        BATTLE_TEXT_SIZE["medium"] = 16
+        self.source_name = "N/A" if source is None else source.move.name
         self.position = position
         self.effect = options.effect
         self.effect_options = options.effect_options
@@ -2336,65 +3047,169 @@ class Hazard:
             target.current_speed += self.knockback
 
     def __str__(self):
-        return f"{self.name} inflicted at ({self.position[0]}, {self.position[1]}) by {self.inflicted_by.name}'s {self.source.move.name}."
+        return f"{self.name} inflicted at ({self.position[0]}, {self.position[1]}) by {self.inflicted_by.name}'s {self.source_name}."
 
 class CenterOfAttentionHazard(Hazard):
     def inflict_knockback(self, target):
         if target.frames_since_collision_with_other_character < 60 or target.frames_tangible < 60:
             return
-        if self.source.move.name == "Rage Powder" and pokemon_types["Grass"] in target.current_types:
-            return
+        try:
+            if self.source_name == "Rage Powder" and pokemon_types["Grass"] in target.current_types:
+                return
+        except AttributeError:
+            pass
         distance = np.linalg.norm(self.position - target.position)
         target.velocity = ((self.position-target.position) / distance) * target.current_speed
 
 
 class Team:
-    def __init__(self, team_id, name, color):
-        self.team_id = team_id
+    def __init__(self, name, color):
+        self.team_id = None
         self.name = name
         self.color_rgb = color
         self.color_hex = "#" + honse_data.hexify_tuple(color)
+        self.wild = False
+        self.pokemon = []
         self.characters = []
+        self.in_battle = False
 
     def eliminated(self): 
+        if not self.in_battle:
+            return False
         for character in self.characters:
             if not character.is_fainted():
                 return False
         return True
 
-    def on_team(self, character):
-        return character in self.characters
+    def on_team(self, mon):
+        if self.in_battle:
+            return mon in self.characters
+        else:
+            return mon in self.pokemon
 
     def get_name(self):
         return f"${self.color_hex}{self.name}"
 
+class GrowthRates(enum.Enum):
+    ERRATIC = enum.auto()
+    FAST = enum.auto()
+    MEDIUM_FAST = enum.auto()
+    MEDIUM_SLOW = enum.auto()
+    SLOW = enum.auto()
+    FLUCTUATING = enum.auto()
 
-    
+class Species:
+    def __init__(self,
+                 dex: int,
+                 name: str,
+                 icon,
+                 base_stats: dict,
+                 pokemon_types: list,
+                 level_up_moves: dict,
+                 tutor_moves: list,
+                 tm_moves: list,
+                 weight: int,
+                 growth_rate: GrowthRates,
+                 ev_yield: int,
+                 experience_yield: int,
+                 base_friendship: int,
+                 catch_rate: int):
+        self.dex = dex
+        self.icon = icon
+        self.name = name
+        self.base_stats = base_stats
+        self.pokemon_types = pokemon_types
+        self.level_up_moves = level_up_moves
+        self.tutor_moves = tutor_moves
+        self.tm_moves = tm_moves
+        self.weight = weight
+        self.growth_rate = growth_rate
+        self.ev_yield = ev_yield
+        self.experience_yield = experience_yield
+        self.base_friendship = base_friendship
+        self.catch_rate = catch_rate
+
+    def get_icon(self):
+        if type(self.icon) is str:
+            return Image.open(os.path.join("test sprites", self.icon)).convert('RGBA')
+        else:
+            pass
+            # saurbot stuff will go here
+class Pokemon:
+    def __init__(self,
+                 species: Species,
+                 level: int,
+                 experience: int,
+                 moves: list,
+                 nature: str,
+                 ivs: dict,
+                 evs: dict,
+                 friendship: int,
+                 nickname: str|None = None,
+                 shiny: bool = False,
+                 pokerus: bool = False,
+                 size_multiplier: int = 1,
+                 ):
+        self.species = species
+        self.level = level
+        self.experience = experience
+        self.moves = moves
+        self.nature = nature
+        self.ivs = ivs
+        self.evs = evs
+        self.friendship = friendship
+        self.shiny = shiny
+        self.pokerus = pokerus
+        self.hp = hp_formula(
+            self.species.base_stats["HP"],
+            self.level,
+            self.ivs["HP"],
+            self.evs["HP"])
+        if nickname is None:
+            self.name = self.species.name
+        else:
+            self.name = nickname
+        self.size_multiplier = size_multiplier
+
+    def get_nature_value(self):
+        return honse_data.NATURES[self.nature]
+
+    def to_character(self, game, team:Team, ui_x:int, ui_y:int, ui_options, revives:int=0):
+        return Character(
+            game = game,
+            team = team,
+            pokemon = self,
+            ui_x = ui_x,
+            ui_y = ui_y,
+            ui_options = ui_options,
+            revives = revives)
+
 class Character:
     def __init__(
-        self, game, name, team, level, stats, moves, types, image, size_multiplier
+        self, game, team: Team, pokemon: Pokemon, ui_x: int, ui_y: int, ui_options, revives:int=0
     ):
+        self.revives = revives
+        self.pokemon = pokemon
         self.game = game
-        self.npc = False
+        self.team = team
+        self.team.characters.append(self)
         angle = random.uniform(0, 2 * np.pi)
         velocity = [np.cos(angle), np.sin(angle)]
         self.velocity = np.array(velocity, dtype=float)
-        self.base_size_multiplier = size_multiplier
+        self.base_size_multiplier = self.pokemon.size_multiplier
         self.radius = 20
-        self.name = name
-        # the id of the team
-        self.team = team
-        self.team.characters.append(self)
-        # the id of the character on that team
-        self.teammate_id = len(self.team.characters)-1
-        self.level = level
-        self.base_stats = stats["base stats"]
-        self.evs = stats["evs"]
-        self.ivs = stats["ivs"]
-        self.nature = stats["nature"]
-        self.moves = moves
+        self.name = self.pokemon.name
+        self.species = self.pokemon.species
+        # characteristics
+        self.level = self.pokemon.level
+        self.base_stats = self.species.base_stats
+        self.evs = self.pokemon.evs
+        self.ivs = self.pokemon.ivs
+        self.nature = self.pokemon.get_nature_value()
+        self.moves = self.pokemon.moves
         self.cooldowns = [0, 0, 0, 0]
-        self.types = types
+        self.types = self.species.pokemon_types
+        self.weight = self.species.weight
         # speed is pixels/frame
         self.current_speed = 0
         self.direction = random.uniform(0, 359)
@@ -2402,18 +3217,24 @@ class Character:
         self.invulnerability = 0
         self.intangibility = 0
         self.hitstop = 0
-        # insteading of adding a flat amount, acceleration and drag work changing the speed by a portion of the difference between current speed and target speed
+        # instead of adding a flat amount, acceleration and drag work changing the speed by a portion of the difference between current speed and target speed
+        # this happens once per frame. the target speed is based on the character's base speed stat and modified based on some other stuff
+        # for example: the target speed is 6. the current speed is 4. the difference between the speeds is 2. if acceleration is 0.1, speed would increase by 0.1 * 2 = 0.2 units this frame
         self.acceleration = 0.1
         self.drag = 0.1
+        # status
         self.has_non_volatile_status = False
         self.effects = []
+        # hp
         self.max_hp = self.get_max_hp()
         self.hp = self.max_hp
-        self.species_image_name = image
+        # sounds
         self.hit_sound_to_play = None
         self.play_fainted_sound = False
+        # last moves
         self.last_targeted_by = None
-        self.last_move_used = None
+        self.last_attack_used = None
+        self.last_successful_attack_used = None
         self.wall_bounce_attack_cooldown = 60
         self.tried_to_attack_this_frame = False
         self.battle_stats = {
@@ -2427,21 +3248,30 @@ class Character:
             "moves used": 0}
         # attributes are recalculated whenever an effect is added or removed
         # if a move or effect requires an additional recalculation, just call recalculate
-        # unmodified stats factor in base stat changes but not stages or other modifiers
+        # unmodified stats factor in changes to base stats, ivs, and evs but not stages or other modifiers
         # mainly used for critical hits
         self.current_unmodified_stats = {}
         # modified stats include both all factors that would change a stat
         self.current_modified_stats = {}
+        self.current_accuracy_stage = 0
+        self.current_evasion_stage = 0
         # types can also change and is checked whenever recalculate is called
         self.current_types = []
         self.locked_moves = [False, False, False, False]
         self.move_speed_modifier = 1
         self.current_base_speed = self.base_stats["SPE"]
         self.current_moves = [move for move in self.moves]
-        self.current_species_image_name = self.species_image_name
+        self.current_species = self.species
+        # currently grounded (true if levitating and not forced_grounded)
+        self.grounded = False
+        # levitating (true if flying-type or affected by magnet rise or telekinesis)
+        self.levitating = False
+        # forced grounded (true if affected by ingrain, smack down, or thousand arrows)
+        self.forced_grounded = False
         self.drag_modifier = 1
         self.acceleration_modifier = 1
         self.current_size_modifier = 1
+        self.current_weight = self.weight
         self.get_image()
         self.recalculate()
         # these next two variables are used for center of effect hazards to ensure that a pokemon that was just dealt knockback is not pulled towards the center of effect
@@ -2451,13 +3281,14 @@ class Character:
         # moves start on partial cooldown, but not less than 1 second
         for i in range(len(self.moves)):
             self.on_cooldown(i)
-            self.cooldowns[i] /= 4
+            self.cooldowns[i] //= 2
             if self.cooldowns[i] > 0 and self.cooldowns[i] < 60:
                 self.cooldowns[i] = 60
-        ui_x = honse_data.BASE_WIDTH - 250
-        ui_y =  (self.teammate_id * honse_data.BASE_HEIGHT / 8) + (honse_data.BASE_HEIGHT * self.team.team_id / 2)
-        self.ui_element = honse_data.UIElement(ui_x, ui_y, self)
-        self.spawn_in()
+        self.ui_element = honse_data.UIElement(ui_options, ui_x, ui_y, self)
+        self.spawned_in = False
+
+    def is_wild(self):
+        return self.team.wild
 
     def get_name(self):
         return f"${self.team.color_hex}{self.name}"
@@ -2468,6 +3299,8 @@ class Character:
             # because unmodified for most purposes still includes base stat overrides, which is a type of modification
             self.current_unmodified_stats[stat] = self.calculate_modified_stat(stat=stat, include_stages=False, include_other_modifiers=False)
             self.current_modified_stats[stat] = self.calculate_modified_stat(stat)
+        self.current_accuracy_stage = max(-6, min(6, activate_effect(EffectTrigger.STAGE_MODIFICATION, self, 0, {"stat":"ACC"})))
+        self.current_evasion_stage = max(-6, min(6, activate_effect(EffectTrigger.STAGE_MODIFICATION, self, 0, {"stat":"EVA"})))
         self.types = self.recalculate_types()
         self.current_base_speed = activate_effect(EffectTrigger.BASE_STAT_OVERRIDE, self, self.base_stats["SPE"], {"stat":"SPE"})
         for i in range(len(self.moves)):
@@ -2480,6 +3313,18 @@ class Character:
         self.acceleration_modifier = activate_effect(EffectTrigger.ACCELERATION_MODIFICATION, self, 1)
         self.current_types = activate_effect(EffectTrigger.TYPE_OVERRIDE, self, self.types)
         self.current_types = activate_effect(EffectTrigger.TYPE_ADDITION, self, self.current_types)
+        self.levitating = activate_effect(EffectTrigger.CHECK_LEVITATING, self, pokemon_types["Flying"] in self.current_types)
+        self.force_grounded = activate_effect(EffectTrigger.CHECK_FORCE_GROUNDED, self, False)
+        self.grounded = self.force_grounded or not self.levitating
+        self.current_weight = activate_effect(EffectTrigger.WEIGHT_OVERRIDE, self, self.weight)
+        self.current_weight = activate_effect(EffectTrigger.WEIGHT_MODIFIER, self, self.current_weight)
+        old_size_modifier = self.current_size_modifier
+        self.current_size_modifier = activate_effect(EffectTrigger.SIZE_MODIFICATION, self, 1)
+        old_species = self.current_species
+        self.current_species = activate_effect(EffectTrigger.SPECIES_OVERRIDE, self, self.species)
+        self.current_species_image_name = self.current_species
+        if old_species != self.current_species and old_size_modifier != self.current_size_modifier:
+            self.get_image()
 
     def get_hp_as_percent(self):
         if self.is_fainted():
@@ -2489,23 +3334,26 @@ class Character:
         return int(max(1, min(99, int(self.hp * 100 / self.max_hp))))
 
     def spawn_in(self):
-        while True:
+        for i in range(honse_data.MAX_SPAWN_ATTEMPTS):
             self.position = np.array(self.game.spawn_in_area(self.team.team_id), dtype=float)
             colliding = False
             for character in self.game.characters:
                 if character is self:
                     continue
-                if self.is_colliding(character):
+                if character.spawned_in and self.is_colliding(character):
                     colliding = True
                     break
             if colliding == False:
-                break
+                self.spawned_in = True
+                return
+        raise honse_data.SpawnError
 
     def get_image(self):
-        image = Image.open(self.current_species_image_name).convert('RGBA')
+        pygame_mode = self.game.pygame_mode
+        image = self.species.get_icon()
         cropped_image = image.getbbox()
         cropped_image = image.crop(cropped_image)
-        size_multiplier = self.base_size_multiplier * self.current_size_modifier
+        size_multiplier = self.base_size_multiplier * self.current_size_modifier * (1/self.game.zoom_level)
         new_size = (int(cropped_image.width * size_multiplier), int(cropped_image.height * size_multiplier))
         cropped_image = cropped_image.resize(new_size)
         self.width, self.height = cropped_image.size
@@ -2547,9 +3395,14 @@ class Character:
                 a.point(lambda x: int(x * 1 / 3)),
             ),
         )
-        self.surface = honse_data.image_to_surface(self.image)
-        self.intangible_surface = honse_data.image_to_surface(self.intangible_image)
-        self.fainted_surface = honse_data.image_to_surface(self.fainted_image)
+        if pygame_mode:
+            self.surface = honse_data.image_to_surface(self.image)
+            self.intangible_surface = honse_data.image_to_surface(self.intangible_image)
+            self.fainted_surface = honse_data.image_to_surface(self.fainted_image)
+        else:
+            self.surface = None
+            self.intangible_surface = None
+            self.fainted_surface = None
 
     def same_team(self, other):
         return self.team is other.team
@@ -2583,11 +3436,13 @@ class Character:
             elif cooldown < 0:
                 self.cooldowns[i] = 0
 
-    def get_type_matchup(self, pkmn_type: PokemonType, type_overrides: dict|None = None):
+    def get_type_matchup(self, pkmn_type: PokemonType, type_overrides: dict|None = None, ground_move_that_can_hit_nongrounded: bool = False):
         type_overrides = {} if type_overrides is None else type_overrides
         type_overrides = activate_effect(EffectTrigger.TYPE_EFFECTIVENESS_OVERRIDE, self, type_overrides)
         damage_numerator = 1
         damage_denominator = 1
+        if pkmn_type == pokemon_types["Ground"] and not self.grounded and not ground_move_that_can_hit_nongrounded:
+            return 0.125
         for t in self.get_types():
             if pkmn_type in type_overrides:
                 if type_overrides[pkmn_type] == "immune":
@@ -2599,7 +3454,8 @@ class Character:
                     damage_numerator *= 1
                     damage_denominator *= 2
             elif pkmn_type in t.immunities:
-                return 0.125
+                if (t == pokemon_types["Flying"] and pkmn_type == pokemon_types["Ground"] and not self.grounded) == False:
+                    return 0.125
             elif pkmn_type in t.weaknesses:
                 damage_numerator *= 2
                 damage_denominator *= 1
@@ -2648,19 +3504,23 @@ class Character:
         ev = self.evs[stat]
         iv = self.ivs[stat]
         nature = self.nature[stat]
-        return other_stat_formula(base_stat, self.level, iv, ev, nature)
+        stat_value = other_stat_formula(base_stat, self.level, iv, ev, nature)
+        stat_value = activate_effect(EffectTrigger.TRANSFORM_STAT_OVERRIDE, self, stat_value, {"stat":stat})
+        return stat_value
 
-    def calculate_modified_stat(self, stat, include_base_stat_overrides=True, include_stages=True, include_other_modifiers=True):
+    def calculate_modified_stat(self, stat, include_stages=True, include_other_modifiers=True):
         base_stat = self.base_stats[stat]
-        if include_base_stat_overrides:
-            base_stat = activate_effect(EffectTrigger.BASE_STAT_OVERRIDE, self, base_stat, {"stat":stat})
-        stage = 0
-        if include_stages:
-            stage = activate_effect(EffectTrigger.STAGE_MODIFICATION, self, stage, {"stat":stat})
+        base_stat = activate_effect(EffectTrigger.BASE_STAT_OVERRIDE, self, base_stat, {"stat":stat})
         ev = self.evs[stat]
         iv = self.ivs[stat]
         nature = self.nature[stat]
+        stat_value = self.calculate_unmodified_stat(stat)
         stat_value = other_stat_formula(base_stat, self.level, iv, ev, nature)
+        stat_value = activate_effect(EffectTrigger.TRANSFORM_STAT_OVERRIDE, self, stat_value, {"stat":stat})
+        if include_stages:
+            stage = activate_effect(EffectTrigger.STAGE_MODIFICATION, self, 0, {"stat":stat})
+        else:
+            stage = 0
         stage_modifier = stage_to_modifier(stage)
         stat_value *= stage_modifier
         if include_other_modifiers:
@@ -2686,7 +3546,9 @@ class Character:
         return hp_formula(self.base_stats["HP"], self.level, iv, ev)
 
     def get_move_speed(self):
-        speed = speed_formula(self.current_base_speed) * self.move_speed_modifier 
+        # a pokemon gets faster or slower based speed (the pokemon stat) changes
+        stat_change_modifier = self.current_modified_stats["SPE"] / self.current_unmodified_stats["SPE"]
+        speed = speed_formula(self.current_base_speed) * self.move_speed_modifier * stat_change_modifier
         return max(1, speed)
 
     def get_acceleration(self):
@@ -2731,12 +3593,13 @@ class Character:
                     # if an effect that would block the move usage triggers, it returns True
                     can_move = not activate_effect(EffectTrigger.ON_TRY_USE_MOVE, self, False, {"move": move})
                     if can_move:
-                        self.game.display_message(f"{self.get_name()}$#000000 used {move.name}!", "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
+                        self.game.display_message(f"{self.get_name()}$DEFAULT used {move.name}!", "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
                         attack = move.on_use(self, target=target)
                         successfully_moved = attack.success
                         if successfully_moved:
                             self.battle_stats["moves used"] += 1
-                            self.last_move_used = attack
+                            self.last_successful_attack_used = attack
+                        self.last_attack_used = attack
                     self.on_cooldown(i)
                     # todo
                     # moves that modify their accuracy conditionally will instead inflict a post move cooldown effect on its user
@@ -2869,29 +3732,40 @@ class Character:
     def do_damage(self, source, damage, attack=None, silent=False):
         if self.is_fainted() or damage==0 or self.game.game_end:
             return 0
-        if damage > self.hp:
-            damage = self.hp
-        self.hp -= damage
-        self.battle_stats["damage taken"] += damage
-        if source is not None and not self.same_team(source):
-            source.battle_stats["damage dealt"] += damage
-        if not silent:
-            percent = int(max(1, (100 * damage) // self.max_hp))
-            self.game.display_message(f"{self.get_name()}$#000000 took {percent}% damage.", "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
-            self.game.message_log.append([f"({percent}% = {damage}, {self.hp}/{self.max_hp})", False])
-        if self.is_fainted():
-            self.battle_stats["fainted"] = True
+        damage = max(1, int(damage))
+        if attack is not None and attack.substitute_activated:
+            activate_effect(EffectTrigger.DAMAGE_SUBSTITUTE, self, damage)
+        else:
+            if damage > self.hp:
+                damage = self.hp
+            self.hp -= damage
+            self.battle_stats["damage taken"] += damage
             if source is not None and not self.same_team(source):
-                source.battle_stats["kos"] += 1
-            self.play_fainted_sound = True
-            activate_effect(EffectTrigger.ON_FAINT, self, effect_kwargs={"attack": attack})
-            self.game.display_message(f"{self.get_name()}$#961919 fainted!", "gen4", BATTLE_TEXT_SIZE["large"], (150, 25, 25, 255))
+                source.battle_stats["damage dealt"] += damage
+            if not silent:
+                percent = int(max(1, (100 * damage) // self.max_hp))
+                self.game.display_message(f"{self.get_name()}$DEFAULT took {damage} damage. ({percent}%)", "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
+                self.game.message_log.append([f"({percent}% = {damage}, {self.hp}/{self.max_hp})", False])
+            if self.hp <= 0 and self.revives > 0:
+                self.revives -= 1
+                self.hp = self.max_hp
+                self.game.display_message(f"{self.get_name()}$DEFAULT is empowered! It toughed out the fatal damage!", "gen4", BATTLE_TEXT_SIZE["large"], (0,0,0,255))
+                if self.revives == 0:
+                    self.game.display_message(f"Last life!", "gen4", BATTLE_TEXT_SIZE["medium"], (150, 25, 25, 255))
+            if self.is_fainted():
+                self.battle_stats["fainted"] = True
+                if source is not None and not self.same_team(source):
+                    source.battle_stats["kos"] += 1
+                self.play_fainted_sound = True
+                activate_effect(EffectTrigger.ON_FAINT, self, effect_kwargs={"attack": attack})
+                self.game.display_message(f"{self.get_name()}$#961919 fainted!", "gen4", BATTLE_TEXT_SIZE["large"], (150, 25, 25, 255))
         return damage
 
 
     def do_healing(self, source, healing,  silent=False, bypass_heal_block=False):
         if self.is_fainted() or healing==0 or self.game.game_end:
             return 0
+        healing = max(1, int(healing))
         # afaik nothing bypasses heal block other than z moves, but its good to have the option
         if not bypass_heal_block:
             heal_block_activated = activate_effect(EffectTrigger.HEAL_BLOCK, self, False)
@@ -2906,7 +3780,7 @@ class Character:
             source.battle_stats["healing given"] += healing
         if not silent:
             percent = int(max(1, (100 * healing) // self.max_hp))
-            self.game.display_message(f"{self.get_name()}$#000000 recovered {percent} HP.", "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
+            self.game.display_message(f"{self.get_name()}$DEFAULT recovered {healing} HP. ({percent}%)", "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
             self.game.message_log.append([f"({percent}% = {healing}, {self.hp}/{self.max_hp})", False])
         return healing
 
@@ -2918,7 +3792,7 @@ class Character:
             self.ui_element.queue_status(status)
         else:
             self.has_non_volatile_status = True
-        self.game.message_log.append([f"{self.name} was inflicted with {type(status)} by {status.inflicted_by.name}'s {status.source.move.name}.", False])
+        self.game.message_log.append([f"Created {status}.", False])
         return True
 
     def remove_status(self, status):
@@ -2942,6 +3816,35 @@ class MoveTarget(enum.Enum):
     ALLY = enum.auto()
     OTHERS = enum.auto()
 
+# most of these aren't much use in a game with no abilities, so they're just here in case I add them later
+class MoveFlags(enum.Enum):
+    AUTHENTIC = enum.auto()
+    BITE = enum.auto()
+    BLADE = enum.auto()
+    BONE = enum.auto()
+    BULLET = enum.auto()
+    CHARGE = enum.auto()
+    CONTACT = enum.auto()
+    DANCE = enum.auto()
+    DEFROST = enum.auto()
+    DISTANCE = enum.auto()
+    GRAVITY = enum.auto()
+    HEAL = enum.auto()
+    KICK = enum.auto()
+    LIGHT = enum.auto()
+    MIRROR = enum.auto()
+    MYSTERY = enum.auto()
+    NONSKY = enum.auto()
+    POWDER = enum.auto()
+    PROTECT = enum.auto()
+    PULSE = enum.auto()
+    PUNCH = enum.auto()
+    RECHARGE = enum.auto()
+    REFLECTABLE = enum.auto()
+    SNATCH = enum.auto()
+    SOUND = enum.auto()
+    WIND = enum.auto()
+
 class Move:
     def __init__(self,
                  name: str,
@@ -2949,13 +3852,13 @@ class Move:
                  category: MoveCategories,
                  target: MoveTarget,
                  power: int,
+                 accuracy: int,
                  options: "MoveOptions"):
         self.name = name
         self.type = pkmn_type
         self.category = category
         self.target = target
         self.power = power
-        self.contact = options.contact
         # secondaries and non_secondaries are mostly the same
         # both trigger after a move lands
         # non secondaries are guaranteed to trigger and secondaries may only have a chance to trigger
@@ -2963,16 +3866,19 @@ class Move:
         # when a move is used, it creates an attack_class. usually this is just Attack but some moves may inherit from Attack for unique effects
         self.secondary_effects = options.secondary_effects
         self.non_secondary_effects = options.non_secondary_effects
-        self.accuracy = options.accuracy
+        self.accuracy = accuracy
         self.attack_class = options.attack_class
         self.crit_stage = options.crit_stage
         self.drain = options.drain
         self.recoil = options.recoil
+        self.multihit = options.multihit
         self.attack_stat_override = options.attack_stat_override
         self.defense_stat_override = options.defense_stat_override
         self.ignore_attack_modifiers = options.ignore_attack_modifiers
         self.ignore_defense_modifiers = options.ignore_defense_modifiers
+        self.ignore_evasion = options.ignore_evasion
         self.foul_play = options.foul_play
+        self.flags = options.flags
         self.effectiveness_overrides = options.effectiveness_overrides
         self.hitstop = options.hitstop
         self.base_knockback = options.base_knockback
@@ -2982,6 +3888,7 @@ class Move:
         self.spread_options = options.spread_options
         self.spread_can_hit_allies = options.spread_can_hit_allies
         self.spread_can_hit_enemies = options.spread_can_hit_enemies
+        self.ohko = options.ohko
         self.cooldown = options.cooldown
         if self.category == MoveCategories.STATUS:
             if self.base_knockback is None:
@@ -2989,10 +3896,7 @@ class Move:
             if self.hitstop is None:
                 self.hitstop = 30
             if self.animation is None:
-                if self.target in [MoveTarget.USER, MoveTarget.ALLY]:
-                    self.animation = honse_particles.buff_spawner_animation
-                else:
-                    self.animation = honse_particles.debuff_spawner_animation
+                self.animation = honse_particles.status_animation
             if self.sound is None:
                 # todo add sounds here
                 pass
@@ -3007,6 +3911,9 @@ class Move:
                 self.sound = self.type.sound
         if self.cooldown is None:
             self.get_default_cooldown()
+
+    def has_flag(self, flag: MoveFlags):
+        return flag in self.flags
 
     def has_effect(self, tag: EffectTag, affects_user: bool|None=None, search_secondaries: bool=True, search_non_secondaries: bool=True):
         effects_to_search = []
@@ -3023,24 +3930,23 @@ class Move:
         return False
 
     def get_default_cooldown(self):
-        # cooldown scales on power plus a flat 10 because i want high power moves to have better dps
         if self.power == 0:
-            cooldown = 240
+            cooldown = 300
         else:
-            cooldown = 60 * (self.power + 10) / 10
+            # 10 BP = 1 sec cooldown
+            cooldown = (60 * (self.power / 10))
+        if not self.multihit:
+            # non multihit moves have an addition 2 secs cooldown
+            cooldown += 120
         modifier = 1
         if self.spread_radius > 0:
-            modifier *= 1.5
-        if self.accuracy < 100:
-            modifier *= 1.25 * 100 / self.accuracy
-        elif self.accuracy == 101:
-            modifier *= 0.9
+            modifier *= 1.4
         if self.crit_stage > 0:
-            modifier *= 1.25
+            modifier *= 1.2
         if self.drain > 0:
-            modifier *= 1.35
+            modifier *= 1.3
         if self.recoil > 0:
-            modifier *= 0.8
+            modifier *= 0.9
         secondaries = self.secondary_effects + self.non_secondary_effects
         self_detrimental_cooldown_bonus = 0
         for effect_group in secondaries:
@@ -3099,28 +4005,64 @@ class Attack:
         self.move = move
         self.user = user
         self.target = target
-        self.contact = self.move.contact
+        self.contact = self.move.has_flag(MoveFlags.CONTACT)
         self.initial_use = initial_use
         self.fixed_damage_amount = 0
         self.damage_dealt = 0
         self.position = np.array([0, 0], dtype=float)
         self.power = self.move.power
+        self.accuracy = self.move.accuracy
         self.type = self.move.type
         self.attack_stat_override = self.move.attack_stat_override
         self.defense_stat_override = self.move.defense_stat_override
         self.ignore_attack_modifiers = self.move.ignore_attack_modifiers
         self.ignore_defense_modifiers = self.move.ignore_defense_modifiers
+        self.ignore_evasion = self.move.ignore_evasion
         self.foul_play = self.move.foul_play
+        self.defender_substitute = False
         self.defender_protect = False
         self.defender_endure = False
         self.attacker_feint = False
         self.protect_activated = False
+        self.substitute_activated = False
         self.endure_activated = False
         self.animation = self.move.animation
         self.sound = self.move.sound
-        self.success = False
+        self.success = None
         self.failure_message = "But it failed!"
-    
+
+    def accuracy_check(self):
+        true_hit = self.accuracy == 101
+        attacker_locked_on = activate_effect(EffectTrigger.LOCK_ON_CHECK, self.user, False)
+        if self.target is self.user:
+            defender_semi_invulnerable = False
+        else:
+            defender_semi_invulnerable = activate_effect(EffectTrigger.SEMI_INVULNERABLE_CHECK, self.target, False)
+        if attacker_locked_on:
+            return True
+        elif defender_semi_invulnerable:
+            return False
+        elif true_hit or self.user is self.target:
+            return True
+        attacker_accuracy = self.user.current_accuracy_stage
+        defender_evasion = self.target.current_evasion_stage if not self.ignore_evasion else 0
+        combined_accuracy_stage = min(6, max(-6, attacker_accuracy - defender_evasion))
+        accuracy_numerator = 3
+        accuracy_denominator = 3
+        if combined_accuracy_stage > 0:
+            accuracy_numerator += combined_accuracy_stage
+        elif combined_accuracy_stage < 0:
+            accuracy_denominator -= combined_accuracy_stage
+        stage_modifier = accuracy_numerator / accuracy_denominator
+        #gravity will have a modifier here
+        final_accuracy = self.move.accuracy * stage_modifier
+        roll_required = 100 - final_accuracy
+        if roll_required <= 0:
+            return True
+        else:
+            roll = random.uniform(0, 100)
+            return roll >= roll_required
+
     def trigger_weather_effects(self):
         if self.game.weather == Weather.HARSH_SUNLIGHT:
             if self.move.category != MoveCategories.STATUS:
@@ -3133,7 +4075,7 @@ class Attack:
                 if self.type == pokemon_types["Fire"]:
                     self.power *= 1.5
                 elif self.type == pokemon_types["Water"]:
-                    self.power = 0
+                    self.success = False
                     self.failure_message = "The Water-type attack evaporated in the harsh sunlight!"
         elif self.game.weather == Weather.RAIN:
             if self.move.category != MoveCategories.STATUS:
@@ -3146,7 +4088,7 @@ class Attack:
                 if self.type == pokemon_types["Water"]:
                     self.power *= 1.5
                 elif self.type == pokemon_types["Fire"]:
-                    self.power = 0
+                    self.success = False
                     self.failure_message = "The Fire-type attack fizzled out in the heavy rain!"
 
     def trigger_on_use_effects(self):
@@ -3158,6 +4100,19 @@ class Attack:
         if self.user is not self.target:
             activate_effect(
                 effect_trigger=EffectTrigger.ON_TARGETED_BY_MOVE,
+                character=self.target,
+                effect_kwargs={"attack":self}
+                )
+
+    def trigger_after_on_use_effects(self):
+        activate_effect(
+            effect_trigger=EffectTrigger.AFTER_ON_USE_MOVE,
+            character=self.user,
+            effect_kwargs={"attack":self}
+            )
+        if self.user is not self.target:
+            activate_effect(
+                effect_trigger=EffectTrigger.AFTER_ON_TARGETED_BY_MOVE,
                 character=self.target,
                 effect_kwargs={"attack":self}
                 )
@@ -3194,10 +4149,12 @@ class Attack:
                 for secondary in effect_group.effects:
                     if secondary.affects_user:
                         secondary.effect(secondary.options, self.game, self, self.user, self.user)
-                    elif not self.protect_activated:
+                    elif not self.damage_prevented():
                         secondary.effect(secondary.options, self.game, self, self.user, self.target)
 
     def apply_non_secondaries(self):
+        if self.success is not None and self.success == False:
+            return
         if self.damage_dealt > 0 or self.move.category == MoveCategories.STATUS:
             for effect_group in self.move.non_secondary_effects:
                 for non_secondary in effect_group.effects:
@@ -3205,12 +4162,14 @@ class Attack:
                         effect = non_secondary.effect(non_secondary.options, self.game, self, self.user, self.user)
                         if effect.success:
                             self.success = True
-                    elif not self.protect_activated:
+                    elif not self.damage_prevented():
                         effect = non_secondary.effect(non_secondary.options, self.game, self, self.user, self.target)
                         if effect.success:
                             self.success = True
 
     def create_spread_hazard(self):
+        if self.success is not None and self.success == False:
+            return
         if self.initial_use and self.move.spread_radius > 0:
             x, y = self.position[0], self.position[1]
             hazard_options = deepcopy(self.move.spread_options)
@@ -3224,20 +4183,28 @@ class Attack:
             if not self.move.spread_can_hit_enemies:
                 enemy_teams = [team for team in self.game.teams if not team.on_team(self.user)]
                 hazard_options.immune_teams += enemy_teams
-            hazard_options.color = self.type.hazard_color
+            hazard_options.color = self.type.color
             hazard_options.effect = MoveEffect
             hazard_options.effect_options = MoveEffectOptions(move=self.move)
-            Hazard(hazard_options, (x, y), self.move.spread_radius, self.game, self, self.user)
+            radius = self.move.spread_radius + self.user.radius
+            Hazard(hazard_options, (x, y), radius, self.game, self, self.user)
             self.success = True
 
-    def play_effects(self, follow_character=None):
+    def play_effects(self):
         x, y = self.position[0], self.position[1]
         if self.sound is not None:
             self.game.play_sound(self.sound)
         if self.animation is not None:
-            if follow_character is not None:
-                print(self.move.name)
-                self.animation(self.game, x, y, follow_character=follow_character)
+            if self.animation is honse_particles.status_animation:
+                if self.move.target in [MoveTarget.USER, MoveTarget.ALLY]:
+                    friendly = True
+                else:
+                    friendly = False
+                if self.user is self.target:
+                    follow_character = self.user
+                else:
+                    follow_character = None
+                self.animation(self.game, x, y, self.type.color, friendly, follow_character)
             else:
                 self.animation(self.game, x, y)
 
@@ -3247,6 +4214,13 @@ class Attack:
         # damage cannot exceed current HP
         knockback_modification = 1 + (damage / max(1, damage, current_hp))
         return knockback_modification
+
+    def powder_check(self):
+        if self.success is not None and self.success == False:
+            return
+        if self.move.has_flag(MoveFlags.POWDER) and pokemon_types["Grass"] in self.target.current_types:
+            self.success = False
+            self.failure_message = f"It doesn't affect {self.target.get_name()}$DEFAULT."
    
     # all of the stuff that happens when a move is activated is broken up into small functions
     # the reason that things are so separated is so that moves with advanced effects can inherit
@@ -3254,25 +4228,49 @@ class Attack:
     def activate(self):
         self.get_position()
         self.trigger_on_use_effects()
+        self.trigger_after_on_use_effects()
+        if self.accuracy_check() == False:
+            self.success = False
+            self.failure_message = f"{self.user.get_name()}'s$DEFAULT attack missed!"
         self.activte_protect()
+        self.powder_check()
         self.do_damage()
         self.after_doing_damage()
         self.apply_non_secondaries()
         self.trigger_after_use_effects()
         self.create_spread_hazard()
+        if self.success is None and self.move.spread_radius == 0:
+            self.success = False
         self.determine_effects_to_play()
+        self.target.lasted_targeted_by = self
 
     def get_position(self):
         self.position = self.target.position
+
+    # true if the move connected but was blocked by protect or substitute
+    def damage_prevented(self):
+        return self.protect_activated or self.substitute_activated
         
     def activte_protect(self):
+        if self.success is not None and self.success == False:
+            return
         self.protect_activated = self.defender_protect and not self.attacker_feint and self.user is not self.target
         if self.protect_activated:
-            self.user.game.display_message(f"{self.target.get_name()}$#000000 protected itself!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.user.game.display_message(f"{self.target.get_name()}$DEFAULT protected itself!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             self.failure_message = ""
+            return
+        self.substitute_activated = self.defender_substitute and not self.move.has_flag(MoveFlags.AUTHENTIC) and self.user is not self.target
+        if self.substitute_activated:
+            self.user.game.display_message(f"{self.target.get_name()}'s$DEFAULT substitute took the hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+            self.failure_message = ""
+            return
 
     def do_damage(self):
+        if self.success is not None and self.success == False:
+            return
         if (self.power > 0 or self.fixed_damage_amount > 0) and self.move.category != MoveCategories.STATUS and not self.protect_activated:
+            if not self.initial_use:
+                self.game.display_message(f"{self.target.get_name()}$DEFAULT was caught in {self.user.get_name()}'s$DEFAULT {self.move.name}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             # damage calc
             damage, crit = damage_formula(self, self.user, self.target)
             # display messages and vfx
@@ -3280,16 +4278,13 @@ class Attack:
             if effectiveness_quote:
                 self.game.display_message(effectiveness_quote, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             if crit:
-                if self.move.spread_radius > 0:
-                    self.user.game.display_message(f"A critical hit on {self.target.get_name()}!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
-                else:
-                    self.user.game.display_message("A critical hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                self.user.game.display_message("A critical hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             self.target.hit_sound_to_play = effectiveness_sound
             # do check endure
             if damage >= self.target.hp and self.defender_endure:
                 damage = self.target.hp - 1
                 self.endure_activated = True
-                self.game.display_message(f"{self.target.get_name()}$#000000 endured the hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                self.game.display_message(f"{self.target.get_name()}$DEFAULT endured the hit!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
             self.damage_dealt = self.target.do_damage(self.user, damage, self)
             # knockback
             if self.damage_dealt > 0:
@@ -3300,11 +4295,11 @@ class Attack:
                 if self.move.drain > 0:
                     healing = max(1, int(self.damage_dealt * self.move.drain))
                     if self.user.do_healing(self.user, healing, silent=True) > 0:
-                        self.user.game.display_message(f"{self.target.get_name()}$#000000 had its energy drained!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                        self.user.game.display_message(f"{self.target.get_name()}$DEFAULT had its energy drained!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 if self.move.recoil > 0:
                     recoil = max(1, int(self.damage_dealt * self.move.recoil))
                     if self.user.do_damage(self.user, recoil, silent=True) > 0:
-                        self.user.game.display_message(f"{self.target.get_name()}$#000000 is damaged by recoil!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                        self.user.game.display_message(f"{self.target.get_name()}$DEFAULT is damaged by recoil!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
     
     def after_doing_damage(self):
         if self.damage_dealt > 0 or self.endure_activated:
@@ -3314,17 +4309,14 @@ class Attack:
 
     def determine_effects_to_play(self):
         if self.protect_activated:
-            self.animation = lambda game, x, y: honse_particles.barrier_animation(game, x, y, "protect transparent")
+            self.animation = lambda game, x, y: honse_particles.barrier_animation(game, x, y, "protect")
             self.sound = "Protect shield hit"
             self.target.hitstop = 36
             self.play_effects()
         elif self.success:
-            if self.target is self.user:
-                follow_character = self.user
-            else:
+            if self.target is not self.user:
                 self.target.hitstop = self.move.hitstop
-                follow_character = None
-            self.play_effects(follow_character=follow_character)
+            self.play_effects()
         elif len(self.failure_message):
             self.game.display_message(self.failure_message, "gen4", BATTLE_TEXT_SIZE["medium"], (0,0,0,255))
 
@@ -3341,7 +4333,7 @@ class BideAttack(Attack):
         if not self.unleashing_bide:
             effect = BideEffect(None, self.game, self, self.user, self.user)
             if effect.success:
-                self.game.display_message(f"{self.user.get_name()}$#000000 is storing energy!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                self.game.display_message(f"{self.user.get_name()}$DEFAULT is storing energy!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
                 self.success = True
         super().apply_non_secondaries()
 
@@ -3352,10 +4344,17 @@ class BideAttack(Attack):
         else:
             super().determine_effects_to_play()
 
+
 # PLEASE READ THIS TO UNDERSTAND HOW SECONDARIES WORK
 # Some moves have secondaries that apply at a random chance
 # For example, Fire Fang has a 10% chance to burn, and a 10% chance to flinch
 # These effects apply independently of each other. So one, both, or neither effect may occur.
+# NEVERMIND TO THE REST OF THIS
+# I WAS GOING TO HAVE IT WORK THIS WAY BUT I DECIDED TO CHANGE HOW MOVESPEEDMODIFICATIONS ARE APPLIED
+# NOW THAT SPEED STAGES ALSO AFFECT MOVE SPEED, THIS IS UNNECESSARY
+# BUT I DONT FEEL LIKE CHANGING IT BACK SO THIS IS HOW IT IS NOW
+# ALWAYS PUT YOUR SECONDARIES IN A GROUP FOR NOW EVEN THOUGH IT'LL PROBABLY BE A GROUP OF JUST ONE ITEM
+# IF YOU WANT TO SEE WHY IT WAS ORIGINALLY LIKE THIS, READ ON:
 # Some moves apply multiple effects that are dependant on each other however
 # For example, Ancient Power has a 10% chance to raise every stat
 # Because move speed is handled seperately, if an Ancient Power omniboost occurs, both a StatStageEffect and a MoveSpeedModificationEffect need to be applied
@@ -3375,18 +4374,19 @@ class SecondaryGroup:
 
 @dataclass
 class MoveOptions:
-    accuracy: int = 100
     secondary_effects: list[SecondaryGroup] = field(default_factory=list)
     non_secondary_effects: list[SecondaryGroup] = field(default_factory=list)
     attack_class: ... = Attack
     crit_stage: int = 0
-    contact: bool = False
     drain: float = 0
     recoil: float = 0
+    multihit: bool = False
+    flags: list[MoveFlags] = field(default_factory=list)
     attack_stat_override: str|None = None
     defense_stat_override: str|None = None
     ignore_attack_modifiers: bool = False
     ignore_defense_modifiers: bool = False
+    ignore_evasion: bool = False
     fixed_damage: bool = False
     foul_play: bool = False
     effectiveness_overrides: dict|None = None
@@ -3398,9 +4398,9 @@ class MoveOptions:
     spread_options: ... = None
     spread_can_hit_allies: bool = True
     spread_can_hit_enemies: bool = True
+    ohko: bool = False
     cooldown: int|None = None
-
-
+'''
 MOVE_OPTIONS = {
     "confusion damage": MoveOptions(crit_stage=-1),
     "quick attack": MoveOptions(
@@ -3540,15 +4540,7 @@ MOVE_OPTIONS = {
             )]
         ),
     }
-UNOBTAINABLE_MOVES = {
-    "confusion damage": Move(
-        name="confusion damage",
-        pkmn_type=pokemon_types["Typeless"],
-        category=MoveCategories.PHYSICAL,
-        target=MoveTarget.USER,
-        power=40,
-        options=MOVE_OPTIONS["confusion damage"])
-    }
+
 MOVES = {
     "Quick Attack": Move(
         name="Quick Attack",
@@ -3685,55 +4677,560 @@ MANUALLY_IMPLEMENTED_STATUS_MOVES = {
         target=MoveTarget.USER,
         power=0,
         options=MOVE_OPTIONS["kings shield"]),
-    
+}
+'''
+
+UNOBTAINABLE_MOVES = {
+    # used for sources that don't exist
+    "N/A": Move(
+        name="N/A",
+        pkmn_type=pokemon_types["Typeless"],
+        category=MoveCategories.STATUS,
+        target=MoveTarget.USER,
+        power=0,
+        accuracy=101,
+        options=MoveOptions()
+        ),
+    "confusion damage": Move(
+        name="confusion damage",
+        pkmn_type=pokemon_types["Typeless"],
+        category=MoveCategories.PHYSICAL,
+        target=MoveTarget.USER,
+        power=40,
+        accuracy=101,
+        options=MoveOptions(crit_stage=-1))
     }
 
-# some of these can be implemented later
-DO_NOT_IMPLEMENT = [
-    "After You",
-    "Ally Switch",
-    "Assist",
-    "Baton Pass",
-    "Bestow",
-    "Celebrate"
-    ]
-
-with open("honse_moves.json", "r") as f:
-    data = json.load(f)
-    text = ""
-    unique_effects = []
-    for move_name, move_dict in data.items():
-        pass
+NON_VOLATILE_STATUS_DEFAULTS = {
+    "brn": {
+        "effect": BurnEffect,
+        "options": BURN_DEFAULT_OPTIONS
+    },
+    "frz": {
+        "effect": FreezeEffect,
+        "options": BURN_DEFAULT_OPTIONS
+    },
+    "slp": {
+        "effect": SleepEffect,
+        "options": SleepEffectOptions()
+    },
+    "par": {
+        "effect": ParalysisEffect,
+        "options": EffectOptions(lifetime=1800)
+    },
+    "psn": {
+        "effect": PoisonEffect,
+        "options": POISON_DEFAULT_OPTIONS
+    },
+    "tox": {
+        "effect": ToxicEffect,
+        "options": TOXIC_DEFAULT_OPTIONS
+    },
+}
+def create_moves():
+    SIMPLE_MOVES_PATH = os.path.join("move_info", "simple_moves.txt")
+    MOVE_TARGET_OVERRIDES_PATH = os.path.join("move_info", "move_target_overrides.json")
+    MOVE_OPTIONS_PATH = os.path.join("move_info", "move_options.json")
+    MOVES_PATH = os.path.join("move_info", "honse_moves.json")
+    MOVE_FLAGS_DICT = {
+        "authentic": MoveFlags.AUTHENTIC,
+		"bite": MoveFlags.BITE,
+		"blade": MoveFlags.BLADE,
+		"bone": MoveFlags.BONE,
+		"bullet": MoveFlags.BULLET,
+		"charge": MoveFlags.CHARGE,
+		"contact": MoveFlags.CONTACT,
+		"dance": MoveFlags.DANCE,
+		"defrost": MoveFlags.DEFROST,
+		"distance": MoveFlags.DISTANCE,
+		"gravity": MoveFlags.GRAVITY,
+		"heal": MoveFlags.HEAL,
+		"kick": MoveFlags.KICK,
+		"light": MoveFlags.LIGHT,
+		"mirror": MoveFlags.MIRROR,
+		"mystery": MoveFlags.MYSTERY,
+		"nonsky": MoveFlags.NONSKY,
+		"powder": MoveFlags.POWDER,
+		"protect": MoveFlags.PROTECT,
+		"pulse": MoveFlags.PULSE,
+		"punch": MoveFlags.PUNCH,
+		"recharge": MoveFlags.RECHARGE,
+		"reflectable": MoveFlags.REFLECTABLE,
+		"snatch": MoveFlags.SNATCH,
+		"sound": MoveFlags.SOUND,
+		"wind": MoveFlags.WIND
+    }
+    # uncomment this to refresh simple_moves.txt
     '''
-        if len(move_dict["effects"]) == 0:
-            continue
-        for effect in move_dict["effects"]:
-            exists = False
-            for existing_effect in unique_effects:
-                if existing_effect == effect:
-                    exists = True
-                    break
-            if not exists:
-                unique_effects.append(effect)
-
-        text += move_name + "\n"
-        for key, value in move_dict.items():
-            text += f"\t{key}: {value}\n"
-        if len(value["effects"]) == 0 and value["category"] == "Status":
-            #print(key)
-            pass
-        '''
-    '''
-    with open("volatiles.txt", "w") as outfile:
+    with open("moves_that_can_be_automated.txt", "r") as f:
         text = ""
-        volatiles = []
-        for effect in unique_effects:
-            print(effect["name"])
-            if effect["name"] == "Volatile Status":
-                for detail in effect["details"]:
-                    if detail not in volatiles:
-                        volatiles.append(detail)
-                        text += f"{detail}\n"
-
-        outfile.write(text)
+        lines = f.readlines()
+        for line in lines:
+            if line.startswith("\t"):
+                continue
+            move = line.strip()
+            if len(line):
+                text += move + "\n"
+    with open("simple_moves.txt", "w") as f:
+        f.write(text)
     '''
+    default_spread_radius = 180
+    default_spread_options = HazardOptions(
+        lifetime=60,
+        hazard_set_radius_growth_time=15,
+        active_radius_growth_time=15,
+        active_full_radius_duration=31,
+        immune_timer=honse_data.A_LOT_OF_FRAMES)
+    priority_bonus_group = SecondaryGroup(
+        effects=[
+            MoveSecondary(
+                effect=CooldownReductionEffect,
+                options=CooldownReductionEffectOptions(150),
+                affects_user=True)
+        ],
+        chance=1)
+    moves = {}
+    simple_move_names = []
+    with open(SIMPLE_MOVES_PATH, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            name = line.strip()
+            if len(name):
+                simple_move_names.append(name)
+    with open(MOVE_TARGET_OVERRIDES_PATH, "r") as f:
+        move_target_overrides = json.load(f)
+    with open(MOVE_OPTIONS_PATH, "r") as f:
+        all_move_options = json.load(f)
+    with open(MOVES_PATH, "r") as f:
+        move_data = json.load(f)
+    for move_name, move_dict in move_data.items():
+        if move_name in simple_move_names:
+            pkmn_type = pokemon_types[move_dict["type"]]
+            if move_dict["category"] == "Physical":
+                category = MoveCategories.PHYSICAL
+            elif move_dict["category"] == "Special":
+                category = MoveCategories.SPECIAL
+            else:
+                category = MoveCategories.STATUS
+            power = move_dict["power"]
+            accuracy =move_dict["accuracy"]
+            priority = move_dict["priority"]
+            crit = move_dict["crit"]
+            drain = 0.5 if move_dict["drain"] else 0
+            multihit = move_dict["multihit"]
+            if move_name == "Draining Kiss":
+                drain = 0.75
+            flags = [MOVE_FLAGS_DICT[flag] for flag in move_dict["flags"] if len(flag)]
+            # priority 3 moves are stuff like spotlight
+            # priority 4 moves are protection moves
+            # priority 5 move is just helping hand
+            # the others can receive a bonus
+            priority_bonus = priority > 0 and priority <= 2
+            move_options = all_move_options.get(move_name, {})
+            attack_stat_override = move_options.get("attack_stat_override", None)
+            defense_stat_override = move_options.get("defense_stat_override", None)
+            ignore_attack_modifiers = move_options.get("ignore_attack_modifiers", False)
+            ignore_defense_modifiers = move_options.get("ignore_defense_modifiers", False)
+            ignore_evasion = move_options.get("ignore_evasion", False)
+            foul_play = move_options.get("foul_play", False)
+            hitstop = move_options.get("hitstop", None)
+            base_knockback = move_options.get("base_knockback", None)
+            cooldown = move_options.get("cooldown", None)
+            effectiveness_overrides = move_options.get("effectiveness_overrides", None)
+            if effectiveness_overrides is not None:
+                effectiveness_overrides = {pokemon_types[k]: v for k, v in effectiveness_overrides.items()}
+            if move_name in move_target_overrides:
+                spread_radius = move_target_overrides[move_name].get("radius", 0)
+                if spread_radius == "default":
+                    spread_radius = default_spread_radius
+                spread_can_hit_allies = move_target_overrides[move_name].get("can_hit_allies", False)
+                spread_can_hit_enemies = move_target_overrides[move_name].get("can_hit_enemies", False)
+                target = move_target_overrides[move_name].get("target", "user")
+                if target == "enemy":
+                    target = MoveTarget.ENEMY
+                elif target == "ally":
+                    target = MoveTarget.ALLY
+                elif target == "others":
+                    target = MoveTarget.OTHERS
+                elif target == "user":
+                    target = MoveTarget.USER
+                else:
+                    print(f"Unknown target override for move {move_name}: \"{target}\"")
+                    raise NotImplementedError
+            else:
+                target_str = move_dict["target"]
+                if target_str in ["any", "normal", "adjacentFoe", "allAdjacentFoes", "allAdjacent", "randomNormal"]:
+                    target = MoveTarget.ENEMY
+                elif target_str == "adjacentAlly":
+                    target = MoveTarget.ALLY
+                elif target_str == "self":
+                    target = MoveTarget.USER
+                else:
+                    print(f"Unknown target for move {move_name}: \"{target_str}\"")
+                    raise NotImplementedError
+                if target_str == "allAdjacentFoes":
+                    spread_radius = default_spread_radius
+                    spread_can_hit_allies = False
+                    spread_can_hit_enemies = True
+                elif target_str == "allAdjacent":
+                    spread_radius = default_spread_radius
+                    spread_can_hit_allies = True
+                    spread_can_hit_enemies = True
+                else:
+                    spread_radius = 0
+                    spread_can_hit_allies = False
+                    spread_can_hit_enemies = False
+            secondary_effects = []
+            non_secondary_effects = []
+            if priority_bonus:
+                non_secondary_effects.append(priority_bonus_group)
+            recoil = 0
+            for effect_data in move_dict["effects"]:
+                chance = effect_data["chance"] / 100
+                targets_self = effect_data["targets_self"]
+                if effect_data["name"] == "Boosts":
+                    positive = sum(list(effect_data["details"].values())) > 0
+                    stats = {k.replace("accuracy", "acc").replace("evasion", "eva").upper(): v for k, v in effect_data["details"].items()}
+                    effect = MoveSecondary(
+                        effect=StatStageEffect,
+                        affects_user=targets_self,
+                        options=StatOptions(
+                            positive=positive,
+                            stats=stats))
+                elif effect_data["name"] == "Trap":
+                    effect = MoveSecondary(
+                        effect=MoveSpeedModificationEffect,
+                        affects_user=targets_self,
+                        options=MoveSpeedModificationEffectOptions(modifier=1/4)
+                    )
+                elif effect_data["name"] == "Recoil":
+                    recoil = effect_data["details"] / 100
+                    continue
+                elif effect_data["name"] == "Random Status":
+                    effect = MoveSecondary(
+                        effect=RandomStatusEffect,
+                        affects_user=targets_self,
+                        options=RandomStatusEffectOptions(
+                            statuses=[NON_VOLATILE_STATUS_DEFAULTS[item] for item in effect_data["details"]]
+                            )
+                    )
+                elif effect_data["name"] == "Cure Status":
+                    effect = MoveSecondary(
+                        effect=SparklingAriaEffect,
+                        affects_user=targets_self,
+                        options=None
+                    )
+                elif effect_data["name"] == "Volatile Status":
+                    if effect_data["details"] == ["aquaring"]:
+                        effect = MoveSecondary(
+                            effect=AquaRingEffect,
+                            affects_user=targets_self,
+                            options=AquaRingEffectOptions()
+                        )
+                    elif effect_data["details"] == ["flinch"]:
+                        effect = MoveSecondary(
+                            effect=MoveLockEffect,
+                            affects_user=targets_self,
+                            options=MoveLockOptions(lifetime=150)
+                        )
+                    elif effect_data["details"] == ["attract"]:
+                        effect = MoveSecondary(
+                            effect=ConfusionEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["banefulbunker"]:
+                        effect = MoveSecondary(
+                            effect=ProtectEffect,
+                            affects_user=targets_self,
+                            options=ProtectOptions(
+                                contact_effect=PoisonEffect,
+                                contact_effect_options=POISON_DEFAULT_OPTIONS)
+                        )
+                    elif effect_data["details"] == ["spikyshield"]:
+                        effect = MoveSecondary(
+                            effect=ProtectEffect,
+                            affects_user=targets_self,
+                            options=ProtectOptions(
+                                contact_effect=DamageEffect,
+                                contact_effect_options=DamageEffectOptions(
+                                    damage=1/8,
+                                    percent_of_max_hp_damage=True
+                                )
+                                )
+                        )
+                    elif effect_data["details"] == ["partiallytrapped"]:
+                        effect = MoveSecondary(
+                            effect=PartiallyTrappedEffect,
+                            affects_user=targets_self,
+                            options=BIND_DEFAULT_OPTIONS
+                        )
+                    elif effect_data["details"] == ["mustrecharge"]:
+                        effect = MoveSecondary(
+                            effect=MustRechargeEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=450)
+                        )
+                    elif effect_data["details"] == ["charge"]:
+                        effect = MoveSecondary(
+                            effect=ChargeEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["confusion"]:
+                        effect = MoveSecondary(
+                            effect=ConfusionEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["defensecurl"]:
+                        effect = MoveSecondary(
+                            effect=DefenseCurlEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["destinybond"]:
+                        effect = MoveSecondary(
+                            effect=DestinyBondEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=600)
+                        )
+                    elif effect_data["details"] == ["protect"]:
+                        effect = MoveSecondary(
+                            effect=ProtectEffect,
+                            affects_user=targets_self,
+                            options=ProtectOptions()
+                        )
+                    elif effect_data["details"] == ["electrify"]:
+                        effect = MoveSecondary(
+                            effect=ElectrifyEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["endure"]:
+                        effect = MoveSecondary(
+                            effect=EndureEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=600)
+                        )
+                    elif effect_data["details"] == ["focusenergy"]:
+                        effect = MoveSecondary(
+                            effect=CritRatioEffect,
+                            affects_user=targets_self,
+                            options=CritRatioOptions(
+                                modifier=2,
+                                lifetime=1200,
+                                message="USER is getting pumped!")
+                        )
+                    elif effect_data["details"] == ["followme"]:
+                        effect = MoveSecondary(
+                            effect=CenterOfAttentionEffect,
+                            affects_user=targets_self,
+                            options=CenterOfAttentionOptions()
+                        )
+                    elif effect_data["details"] == ["grudge"]:
+                        effect = MoveSecondary(
+                            effect=GrudgeEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=450)
+                        )
+                    elif effect_data["details"] == ["disable"]:
+                        effect = MoveSecondary(
+                            effect=DisableEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["healblock"]:
+                        effect = MoveSecondary(
+                            effect=HealBlockEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["encore"]:
+                        effect = MoveSecondary(
+                            effect=EncoreEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["helpinghand"]:
+                        effect = MoveSecondary(
+                            effect=HelpingHandEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=600)
+                        )
+                    elif effect_data["details"] == ["kingsshield"]:
+                        effect = MoveSecondary(
+                            effect=ProtectEffect,
+                            affects_user=targets_self,
+                            options=ProtectOptions(
+                                lifetime=600,
+                                unprotected_categories=[MoveCategories.STATUS],
+                                contact_effect=StatStageEffect,
+                                contact_effect_options=StatOptions(
+                                    positive=False,
+                                    stats={"ATK":-2}
+                                    )
+                            )
+                        )
+                    elif effect_data["details"] == ["laserfocus"]:
+                        effect = MoveSecondary(
+                            effect=CritRatioEffect,
+                            affects_user=targets_self,
+                            options=CritRatioOptions(
+                                modifier=3,
+                                lifetime=1200,
+                                single_use=True,
+                                message="USER concentrated intensely!")
+                        )
+                    elif effect_data["details"] == ["leechseed"]:
+                        effect = MoveSecondary(
+                            effect=LeechSeedEffect,
+                            affects_user=targets_self,
+                            options=LeechSeedEffectOptions(grass_immune=move_name!="Shadow Seed")
+                        )
+                    elif effect_data["details"] == ["magnetrise"]:
+                        effect = MoveSecondary(
+                            effect=MagnetRiseEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["miracleeye"]:
+                        effect = MoveSecondary(
+                            effect=IdentifyEffect,
+                            affects_user=targets_self,
+                            options=IdentifyEffectOptions(
+                                type_overrides = {
+                                    pokemon_types["Dark"]: {
+                                        pokemon_types["Psychic"]: 1
+                                    }
+                                }
+                            )
+                        )
+                    elif effect_data["details"] == ["foresight"]:
+                        effect = MoveSecondary(
+                            effect=IdentifyEffect,
+                            affects_user=targets_self,
+                            options=IdentifyEffectOptions(
+                                type_overrides = {
+                                    pokemon_types["Ghost"]: {
+                                        pokemon_types["Normal"]: 1,
+                                        pokemon_types["Fighting"]: 1
+                                    },
+
+                                }
+                            )
+                        )
+                    elif effect_data["details"] == ["powder"]:
+                        effect = MoveSecondary(
+                            effect=PowderEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["spotlight"]:
+                        effect = MoveSecondary(
+                            effect=CenterOfAttentionEffect,
+                            affects_user=targets_self,
+                            options=CenterOfAttentionOptions()
+                        )
+                    elif effect_data["details"] == ["stockpile"]:
+                        effect = MoveSecondary(
+                            effect=StockpileEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=3600)
+                        )
+                    elif effect_data["details"] == ["substitute"]:
+                        effect = MoveSecondary(
+                            effect=SubstituteEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["taunt"]:
+                        effect = MoveSecondary(
+                            effect=TauntEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["telekinesis"]:
+                        effect = MoveSecondary(
+                            effect=TelekinesisEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["throatchop"]:
+                        effect = MoveSecondary(
+                            effect=SilencedEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["torment"]:
+                        effect = MoveSecondary(
+                            effect=TormentEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions()
+                        )
+                    elif effect_data["details"] == ["yawn"]:
+                        effect = MoveSecondary(
+                            effect=YawnEffect,
+                            affects_user=targets_self,
+                            options=EffectOptions(lifetime=300)
+                        )
+                    else:
+                        print(f"no code for Volatile Status: {effect_data["details"]}")
+                        raise NotImplementedError
+                elif effect_data["name"] == "Nonvolatile Status":
+                    try:
+                        effect_and_options = NON_VOLATILE_STATUS_DEFAULTS[effect_data["details"]]
+                        effect = MoveSecondary(
+                            effect=effect_and_options["effect"],
+                            affects_user=targets_self,
+                            options=effect_and_options["options"]
+                        )
+                    except KeyError:
+                        print(f"no code for Non-Volatile Status: {effect_data["details"]}")
+                        raise NotImplementedError
+                else:
+                    print(f"no code for {effect_data['name']}")
+                    raise NotImplementedError
+                group = SecondaryGroup(
+                    effects=[effect],
+                    chance=chance
+                )
+                if effect_data["secondary"]:
+                    secondary_effects.append(group)
+                else:
+                    non_secondary_effects.append(group)
+            options = MoveOptions(
+                secondary_effects=secondary_effects,
+                non_secondary_effects=non_secondary_effects,
+                attack_class=Attack,
+                crit_stage=crit,
+                drain=drain,
+                recoil=recoil,
+                flags=flags,
+                attack_stat_override=attack_stat_override,
+                defense_stat_override=defense_stat_override,
+                ignore_attack_modifiers=ignore_attack_modifiers,
+                ignore_defense_modifiers=ignore_defense_modifiers,
+                ignore_evasion=ignore_evasion,
+                foul_play=foul_play,
+                effectiveness_overrides=effectiveness_overrides,
+                hitstop=hitstop,
+                base_knockback=base_knockback,
+                spread_radius=spread_radius,
+                spread_options=None if spread_radius == 0 else default_spread_options,
+                spread_can_hit_allies=spread_can_hit_allies,
+                spread_can_hit_enemies=spread_can_hit_enemies,
+                cooldown=cooldown
+                )
+            move = Move(
+                name=move_name,
+                pkmn_type=pkmn_type,
+                category=category,
+                target=target,
+                power=power,
+                accuracy=accuracy,
+                options=options
+                )
+            moves[move_name] = move
+    return moves
+
