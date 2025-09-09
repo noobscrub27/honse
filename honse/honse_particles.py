@@ -929,7 +929,7 @@ def status_animation(game, x, y, color, friendly, follow_character=None):
         x, y,
         0, 0,
         80, -3,
-        color[0], color[1], color[2], 160,
+        color[0], color[1], color[2], 96,
         options
     )
     game.particle_spawner.add_particles(particle)

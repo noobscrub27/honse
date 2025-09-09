@@ -1,5 +1,7 @@
+from importlib import simple
 import random
 import math
+from turtle import pos
 import honse_data
 import honse_particles
 import enum
@@ -17,7 +19,7 @@ BATTLE_TEXT_SIZE = {
     "medium": 16,
     "small": 0}
 
-DEFAULT_EFFECT_LIFETIME = 1200
+DEFAULT_EFFECT_LIFETIME = 1800
 
 MOVES = {}
 
@@ -286,10 +288,7 @@ STAT_NAMES = {
     "EVA": "Evasion"
     }
 
-stats = {"HP": 100, "ATK": 100, "DEF": 100, "SPA": 100, "SPD": 100, "SPE": 5}
-
 pokemon_types = {}
-
 
 class PokemonType:
     def __init__(self, name):
@@ -380,7 +379,10 @@ pokemon_types["Dark"].default_hitstop = 8
 pokemon_types["Fairy"].default_hitstop = 8
 pokemon_types["Shadow"].default_hitstop = 8
 pokemon_types["Typeless"].default_hitstop = 8
-
+# testing min of 40 hitstop
+for t in pokemon_types.values():
+    if t.default_hitstop < 45:
+        t.default_hitstop = 45
 pokemon_types["Normal"].default_animation = honse_particles.large_impact_animation
 pokemon_types["Fighting"].default_animation = honse_particles.punch_spawner_animation
 pokemon_types["Flying"].default_animation = honse_particles.large_impact_animation
@@ -448,13 +450,27 @@ pokemon_types["Water"].color = get_type_color("#6890F0")
 pokemon_types["Shadow"].color = get_type_color("#42357D")
 pokemon_types["Typeless"].color = get_type_color("#FFFFFF")
 
-ENVIRONMENTS = {
-    "indoors": pokemon_types["Normal"],
-    "sand": pokemon_types["Ground"],
-    "cave": pokemon_types["Rock"],
-    "grass": pokemon_types["Grass"],
-    "water": pokemon_types["Water"]
+
+class Environments(enum.Enum):
+    INDOORS = enum.auto()
+    SAND = enum.auto()
+    CAVE = enum.auto()
+    GRASS = enum.auto()
+    WATER = enum.auto()
+
+ENVIRONMENT_TYPES = {
+    Environments.INDOORS: pokemon_types["Normal"],
+    Environments.SAND: pokemon_types["Ground"],
+    Environments.CAVE: pokemon_types["Rock"],
+    Environments.GRASS: pokemon_types["Grass"],
+    Environments.WATER: pokemon_types["Water"]
     }
+
+class EncounterTypes(enum.Enum):
+    WILD_ENCOUNTER = enum.auto()
+    FISHING_ENCOUNTER = enum.auto()
+    NPC_TRAINER_BATTLE = enum.auto()
+    PVP_TRAINER_BATTLE = enum.auto()
 
 def speed_formula(base):
     return 15 * (base / 255)
@@ -469,6 +485,296 @@ def other_stat_formula(base, level, ivs, evs, nature):
         (math.floor(((2 * base + ivs + math.floor(evs / 4)) * level) / 100) + 5)
         * nature
     )
+
+# the method to the madness: https://bulbapedia.bulbagarden.net/wiki/Catch_rate
+class PokeBallInterface:
+    ULTRA_BEASTS = ["Blacephalon", "Celesteela", "Utsuki", "Buzzwole", "Xurkitree", "Kartana", "Naganadel", "Pheromosa", "Nihilego", "Stakataka", "Guzzlord", "Poipole"]
+    def get_species_catch_rate(self, capture_target: "Character"):
+        return capture_target.species.catch_rate
+
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        return 1
+
+    def apply_ultra_beast_modifier(self, original_catch_rate, capture_target: "Character"):
+        if capture_target.species.name in self.ULTRA_BEASTS:
+            return 410/4096
+        else:
+            return original_catch_rate
+
+    def get_modified_catch_rate(self, capturing_team: "Team", capture_target: "Character"):
+        hp_max = capture_target.max_hp
+        hp_current = capture_target.hp
+        non_volatile_status = capture_target.get_non_volatile_status()
+        if non_volatile_status is None:
+            status_modifier = 1
+        elif type(non_volatile_status) in [PoisonEffect, ToxicEffect, BurnEffect, ParalysisEffect]:
+            status_modifier = 1.5
+        else:
+            status_modifier = 2.5
+        species_catch_rate = self.get_species_catch_rate(capture_target)
+        ball_modifier = self.get_ball_modifier(capturing_team, capture_target)
+        ball_modifier = self.apply_ultra_beast_modifier(ball_modifier, capture_target)
+        modified_catch_rate = ((3 * hp_max) - (2 * hp_current)) / (3 * hp_max)
+        modified_catch_rate *= 4096 * species_catch_rate * ball_modifier
+        modified_catch_rate = int(modified_catch_rate) * status_modifier
+        return modified_catch_rate
+
+    def get_shake_probability(self, modified_catch_rate: int):
+        shake_probability = (modified_catch_rate/1044480) ** 0.1875
+        shake_probability *= 65536
+        return shake_probability
+
+    def perform_shake_check(self, shake_probability):
+        shake_value = random.randint(0, 65535)
+        return shake_value < shake_probability
+
+    def check_critical_capture(self, modified_catch_rate:int, capturing_team: "Team"):
+        species_caught = len(capturing_team.owned_species)
+        if species_caught > 600:
+            species_caught_multiplier = 2.5
+        elif species_caught > 450:
+            species_caught_multiplier = 2
+        elif species_caught > 300:
+            species_caught_multiplier = 1.5
+        elif species_caught > 150:
+            species_caught_multiplier = 1
+        elif species_caught > 30:
+            species_caught_multiplier = 0.5
+        else:
+            return False
+        critical_capture_target = (modified_catch_rate * species_caught_multiplier) // 6
+        critical_check = random.randint(0, 255)
+        return critical_check < critical_capture_target
+
+    # returns the number of successful shake checks
+    def capture_attempt(self, capturing_team: "Team", capture_target: "Character"):
+        successful_shake_checks = 0
+        modified_catch_rate = self.get_modified_catch_rate(capturing_team, capture_target)
+        shake_probability = self.get_shake_probability(modified_catch_rate)
+        capture_data = {"shakes": 0, "critical": False, "success": False}
+        if self.check_critical_capture(modified_catch_rate, capturing_team):
+            capture_data["shakes"] = 1
+            capture_data["critical"] = True
+            if self.perform_shake_check(shake_probability):
+                capture_data["success"] = True
+        else:
+            successful_shake_checks = 0
+            for i in range(4):
+                success = self.perform_shake_check(shake_probability)
+                if success == False:
+                    break
+                successful_shake_checks += 1
+            capture_data["shakes"] = successful_shake_checks
+            if successful_shake_checks == 4:
+                capture_data["success"] = True
+        return capture_data
+
+class SimplePokeBall(PokeBallInterface):
+    def __init__(self, ball_modifier: int):
+        self.ball_modifier = ball_modifier
+
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        return self.ball_modifier
+
+class MasterBall(PokeBallInterface):
+    def capture_attempt(self, capturing_team: "Team", capture_target: "Character"):
+        return {"shakes": 3, "critical": False, "success": True}
+
+class LevelBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        highest_level = 0
+        for character in capturing_team.characters:
+            if not character.is_fainted() and character.level > highest_level:
+                highest_level = character.level
+        if highest_level <= capture_target.level:
+            return 1
+        elif highest_level < 2 * capture_target.level:
+            return 2
+        elif highest_level < 4 * capture_target.level:
+            return 4
+        else:
+            return 8
+
+class LureBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if capture_target.game.encounter_type == EncounterTypes.FISHING_ENCOUNTER:
+            return 5
+        return 1
+
+class MoonBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if capture_target.species.name in ["Nidorina", "Nidorino", "Clefairy", "Jigglypuff", "Skitty", "Munna"]:
+            return 4
+        return 1
+
+class LoveBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        for pokemon in capturing_team.pokemon:
+            if pokemon.species == capture_target.species and opposite_gender_check(pokemon, capture_target.pokemon):
+                return 8
+        return 1
+
+class HeavyBall(PokeBallInterface):
+    def get_species_catch_rate(self, capture_target: "Character"):
+        catch_rate = capture_target.species.catch_rate
+        if capture_target.species.weight >= 300:
+            catch_rate += 30
+        elif capture_target.species.weight >= 200:
+            catch_rate += 20
+        elif capture_target.species.weight >= 100:
+            # no modification
+            pass
+        else:
+            catch_rate -= 20
+        return min(255, max(1, catch_rate))
+
+class FastBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if capture_target.species.base_stats["SPE"] >= 100:
+            return 4
+        return 1
+
+class NetBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if pokemon_types["Bug"] in capture_target.current_types or pokemon_types["Water"]  in capture_target.current_types:
+            return 3
+        return 1
+
+class NestBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if capture_target.level <= 29:
+            return (41 - capture_target.level) // 10
+        return 1
+
+class RepeatBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if capture_target.species in capturing_team.owned_species:
+            return 3.5
+        return 1
+
+class TimerBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        frame = capture_target.game.frame_count
+        # it takes 1 minute to reach full capture power
+        catch_rate = 1 + (3 * (frame // 3600))
+        return min(4, catch_rate)
+
+class DiveBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if capture_target.game.environment == Environments.WATER:
+            return 3.5
+        return 1
+
+class DuskBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        if not capture_target.game.daytime or capture_target.game.environment == Environments.CAVE:
+            return 3
+        return 1
+
+class QuickBall(PokeBallInterface):
+    def get_ball_modifier(self, capturing_team: "Team", capture_target: "Character"):
+        frame = capture_target.game.frame_count
+        damaged = capture_target.hp < capture_target.max_hp
+        if damaged:
+            power_loss_interval = 150
+        else:
+            power_loss_interval = 300
+        # quick balls lose 1 power every 2.5 seconds
+        # if the pokemon is undamaged, it loses 1 power every 5 seconds instead
+        catch_rate = 5 - (frame // power_loss_interval)
+        return max(1, catch_rate)
+
+class BeastBall(PokeBallInterface):
+    def apply_ultra_beast_modifier(self, original_catch_rate, capture_target: "Character"):
+        if capture_target.species.name in self.ULTRA_BEASTS:
+            return 5
+        else:
+            return 410/4096
+
+POKEBALLS = {
+    "Poke Ball": SimplePokeBall(1),
+    "Great Ball": SimplePokeBall(1.5),
+    "Ultra Ball": SimplePokeBall(2),
+    "Master Ball": MasterBall(),
+    "Safari Ball": SimplePokeBall(1.5),
+    "Level Ball": LevelBall(),
+    "Lure Ball": LureBall(),
+    "Moon Ball": MoonBall(),
+    "Friend Ball": SimplePokeBall(1),
+    "Love Ball": LoveBall(),
+    "Heavy Ball": HeavyBall(),
+    "Fast Ball": FastBall(),
+    "Sport Ball": SimplePokeBall(1.5),
+    "Net Ball": NetBall(),
+    "Nest Ball": NestBall(),
+    "Repeat Ball": RepeatBall(),
+    "Timer Ball": TimerBall(),
+    "Premier Ball": SimplePokeBall(1),
+    "Luxury Ball": SimplePokeBall(1),
+    "Dive Ball": DiveBall(),
+    "Dusk Ball": DuskBall(),
+    "Heal Ball": SimplePokeBall(1),
+    "Cherish Ball": SimplePokeBall(1),
+    "Beast Ball": BeastBall(),
+    }
+
+class CaptureAttempt:
+    MAX_SHAKE_COOLDOWN = 90
+    TARGET_INTANGIBILITY = 30
+    def __init__(self, capture_target: "Character", capturing_team: "Team"):
+        self.game = capture_target.game
+        self.capture_target = capture_target
+        self.capturing_team = capturing_team
+        self.ongoing = True
+        self.ball = capturing_team.ball_type
+        self.capturing_team.balls_thrown += 1
+        self.shake_cooldown = self.MAX_SHAKE_COOLDOWN
+        self.capture_target.intangibility = self.TARGET_INTANGIBILITY
+        self.capture_target.put_in_pokeball(self.ball)
+        self.capture_result = POKEBALLS[self.ball].capture_attempt(self.capturing_team, self.capture_target)
+        self.shakes_left = self.capture_result["shakes"]
+        self.shake_text = f"{self.capture_target.get_name()}$DEFAULT tries to wiggle out of {self.capturing_team.get_name()}'s$DEFAULT {self.ball}..."
+        if self.capture_result["success"]:
+            # the last shake check doesnt actually result in a shake, so any successful captures should have 1 less shake check
+            self.shakes_left -= 1
+            self.result_text = f"Gotcha! {self.capture_target.get_name()}$DEFAULT was caught!"
+        else:
+            if self.capture_result["shakes"] == 1:
+                self.result_text = f"Aww! It appeared to be caught!"
+            elif self.capture_result["shakes"] == 2:
+                self.result_text = f"Aargh! Almost had it!"
+            elif self.capture_result["shakes"] == 3:
+                self.result_text = f"Gah! It was so close, too!"
+            else:
+                self.result_text = f"Oh no! The pokemon broke free!"
+        if self.capturing_team.balls_thrown == self.capturing_team.balls:
+            self.game.display_message(f"{self.capturing_team.get_name()}$DEFAULT threw their last {self.ball} at {self.capture_target.get_name()}$DEFAULT!", "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
+        else:
+            self.game.display_message(f"{self.capturing_team.get_name()}$DEFAULT threw a {self.ball} at {self.capture_target.get_name()}$DEFAULT!", "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
+        if self.capture_result["critical"]:
+            self.game.display_message(f"The {self.ball} whistles as it flies through the air!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+    
+    def update(self):
+        if self.ongoing:
+            self.capture_target.intangibility = self.TARGET_INTANGIBILITY
+            self.shake_cooldown -= 1
+            if self.shake_cooldown == 0:
+                if self.shakes_left == 0:
+                    self.capturing_team.ball_throw_cooldown = 600
+                    if self.capture_result["success"]:
+                        self.capture_target.capture(self.capturing_team)
+                        self.game.display_message(self.result_text, "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
+                        self.game.display_message(f"{self.capturing_team.get_name()}$DEFAULT captured {self.capture_target.get_name()}$DEFAULT!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                    else:
+                        self.game.display_message(f"{self.capture_target.get_name()}$DEFAULT broke out of {self.capturing_team.get_name()}'s$DEFAULT {self.ball}!", "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
+                        self.game.display_message(self.result_text, "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                        self.capture_target.take_out_of_pokeball()
+                    self.ongoing = False
+                else:
+                    self.game.display_message(self.shake_text, "gen4", BATTLE_TEXT_SIZE["large"], (0, 0, 0, 255))
+                    self.shakes_left -= 1
+                    self.shake_cooldown = self.MAX_SHAKE_COOLDOWN
+                    
 
 @dataclass
 class EffectOptions:
@@ -497,7 +803,7 @@ class EffectInterface:
             # it is set to True if an effect with a lifetime is successfully inflicted
             # it is set to True automatically after instant_effect is called if this effect has the INSTANT EffectTrigger
             # however, if instant_effect sets success to False, it will remain at False
-            # this is because the many instant effects will always be successful so I dont want to have to remember to set it to True after each one
+            # this is because many instant effects will always be successful so I dont want to have to remember to set it to True after each one
             # I'd rather remember to set to False in the cases where an effect fails
             self.success = None
             self.success = self.infliction()
@@ -525,9 +831,9 @@ class EffectInterface:
             self.instant_effect()
             if EffectTrigger.INSTANT in self.triggers and self.success is None:
                 success = True
-            else:
+            elif self.success != False:
                 success = self.inflicted_upon.inflict_status(self)
-        if success is None or success == False:
+        if success is None or success == False or self.success == False:
             success = False
         if success:
             self.after_infliction()
@@ -577,6 +883,8 @@ class EffectInterface:
         return input_value
 
     def update(self):
+        if self.inflicted_upon.is_intangible():
+            return
         self.lifetime_lived += 1
         if self.lifetime <= 0:
             self.end_effect()
@@ -605,7 +913,7 @@ class EffectInterface:
             inflicted_by = self.inflicted_by.name
         except AttributeError:
             inflicted_by = "N/A"
-        return f"{self.name} inflicted on {inflicted_by} by {inflicted_on}'s {self.source_name}. Tags: {self.tags}"
+        return f"{self.name} inflicted on {inflicted_on} by {inflicted_by}'s {self.source_name}. Tags: {self.tags}"
 
 @dataclass
 class LeechSeedEffectOptions:
@@ -666,7 +974,7 @@ class LeechSeedEffect(EffectInterface):
 class AquaRingEffectOptions:
     lifetime: int = 1800
     healing: float = 1/64
-    cooldown: int = 40,
+    cooldown: int = 40
 class AquaRingEffect(EffectInterface):
     def __init__(self,
              options: AquaRingEffectOptions,
@@ -952,7 +1260,7 @@ class DestinyBondEffect(EffectInterface):
             attack = kwargs["attack"]
             if attack is not None:
                 attacker = attack.user
-                if not self.inflicted_upon.same_team(attacker):
+                if not self.inflicted_upon.team.on_allied_team(attacker):
                     self.activated = True
                     self.lifetime = 0
                     options = DamageEffectOptions(
@@ -991,7 +1299,7 @@ class GrudgeEffect(EffectInterface):
             attack = kwargs["attack"]
             if attack is not None:
                 attacker = attack.user
-                if not self.inflicted_upon.same_team(attacker):
+                if not self.inflicted_upon.team.on_allied_team(attacker):
                     self.activated = True
                     self.lifetime = 0
                     options = MoveLockOptions(
@@ -1605,9 +1913,10 @@ class YawnEffect(EffectInterface):
     def end_of_turn(self):
         self.time_until_sleep -= 1
         if self.time_until_sleep <= 0 and not self.inflicted_upon.is_fainted():
+            self.end_effect()
             options = SleepEffectOptions()
             SleepEffect(options, self.game, self.source, self.inflicted_by, self.inflicted_upon)
-            self.end_effect()
+            
 @dataclass
 class MoveLockOptions:
     lifetime: int = 300
@@ -1955,11 +2264,11 @@ class StatStageEffect(EffectInterface):
                 if stage == 2:
                     boost_descriptor += " sharply"
                 elif stage >= 3:
-                    boost_descriptor += "drastically"
+                    boost_descriptor += " drastically"
             self.display_message(f"TARGET'S {STAT_NAMES[stat].lower()} {boost_descriptor}!")
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
-        if effect == EffectTrigger.STAT_MODIFICATION:
+        if effect == EffectTrigger.STAGE_MODIFICATION:
             stat = kwargs["stat"]
             if stat in self.stats:
                 return self.stats[stat]
@@ -2219,7 +2528,7 @@ class RandomStatusEffect(EffectInterface):
         status = random.choice(self.statuses)
         effect = status["effect"]
         options = status["options"]
-        effect(options, self.game, self.inflicted_by, self.inflicted_upon)
+        effect(options, self.game, self.source, self.inflicted_by, self.inflicted_upon)
 
 @dataclass
 class HazardClearEffectOptions:
@@ -2256,7 +2565,7 @@ class HazardClearEffect(EffectInterface):
     def instant_effect(self):
         for hazard in self.game.hazards:
             if hazard.defoggable:
-                if not self.clear_friendly_hazards and self.inflicted_by.same_team(hazard.inflicted_by):
+                if not self.clear_friendly_hazards and self.inflicted_by.team.on_allied_team(hazard.inflicted_by):
                     continue
                 if np.linalg.norm(self.inflicted_by.position - hazard.position) <= self.radius:
                     hazard.end_effect()
@@ -2307,7 +2616,7 @@ class HealBellEffect(EffectInterface):
     def instant_effect(self):
         did_something = False
         for character in self.game.characters:
-            if character.same_team(self.inflicted_by):
+            if character.team.on_team(self.inflicted_by):
                 non_volatile_status = character.get_non_volatile_status()
                 if non_volatile_status is not None:
                     character.remove_status(non_volatile_status)
@@ -2391,7 +2700,7 @@ class SubstituteEffect(EffectInterface):
         ):
         self.name = "Substitute"
         self.status_icon = "substitute"
-        self.triggers = [EffectTrigger.DAMAGE_SUBSTITUTE]
+        self.triggers = [EffectTrigger.DAMAGE_SUBSTITUTE, EffectTrigger.ON_TARGETED_BY_MOVE]
         self.tags = [EffectTag.SUBSTITUTE]
         self.blocks = [EffectTag.SUBSTITUTE]
         self.overrides = []
@@ -2407,16 +2716,19 @@ class SubstituteEffect(EffectInterface):
     def instant_effect(self):
         damage = self.inflicted_upon.max_hp / 4
         if self.inflicted_upon.hp > damage:
-            self.inflicted_upon.do_damage(source=self.inflicted_by, damage=damage)
+            self.inflicted_upon.do_damage(source=self.inflicted_by, damage=damage, silent=True)
             self.health = damage
         else:
             self.success = False
 
     def activate(self, effect: EffectTrigger, input_value, **kwargs):
+        if effect == EffectTrigger.ON_TARGETED_BY_MOVE:
+            if not kwargs["attack"].move.has_flag(MoveFlags.AUTHENTIC) and kwargs["attack"].user is not self.inflicted_upon and self.health > 0:
+                kwargs["attack"].defender_substitute = True
         if effect == EffectTrigger.DAMAGE_SUBSTITUTE:
             self.health -= input_value
             if self.health <= 0:
-                self.lifetime = 0
+                self.end_effect()
         return input_value
 
 @dataclass
@@ -2586,7 +2898,7 @@ class CamouflageEffect(TypeChangeEffect):
         else:
             options = TypeEffectOptions(
                 lifetime=options.lifetime,
-                types=[game.environment_type])
+                types=[ENVIRONMENT_TYPES[game.environment]])
         super().__init__(options, game, source, inflicted_by, inflicted_upon)
 
 @dataclass
@@ -3064,14 +3376,26 @@ class CenterOfAttentionHazard(Hazard):
 
 class Team:
     def __init__(self, name, color):
+        self.game = None
         self.team_id = None
         self.name = name
         self.color_rgb = color
         self.color_hex = "#" + honse_data.hexify_tuple(color)
         self.wild = False
         self.pokemon = []
+        self.allied_teams = []
         self.characters = []
         self.in_battle = False
+        self.ball_type = ""
+        self.balls = 0
+        self.balls_thrown = 0
+        self.ball_throw_cooldown = 0
+        self.capture_threshold = 0
+        self.capture_attempt = None
+        # this is the list of pokemon captured this battle
+        self.captured_pokemon = []
+        # this is a list of all species owned
+        self.owned_species = []
 
     def eliminated(self): 
         if not self.in_battle:
@@ -3087,9 +3411,30 @@ class Team:
         else:
             return mon in self.pokemon
 
+    def on_allied_team(self, mon):
+        for team in self.allied_teams:
+            if team.on_team(mon):
+                return True
+        return self.on_team(mon)
+
     def get_name(self):
         return f"${self.color_hex}{self.name}"
 
+    def update(self):
+        if self.capture_attempt is not None:
+            self.capture_attempt.update()
+            if self.capture_attempt.ongoing == False:
+                self.capture_attempt = None
+        elif self.balls - self.balls_thrown > 0 and not self.eliminated() and len(self.captured_pokemon) == 0:
+            if self.ball_throw_cooldown > 0:
+                self.ball_throw_cooldown -= 1
+            else:
+                catchable_pokemon = [character for character in self.game.characters if character.is_wild() and not (character.is_fainted() or character.is_intangible() or character.is_invulnerable())]
+                for pokemon in catchable_pokemon:
+                    if pokemon.display_hp / pokemon.max_hp <= self.capture_threshold:
+                        self.capture_attempt = CaptureAttempt(pokemon, self)
+                        break
+        
 class GrowthRates(enum.Enum):
     ERRATIC = enum.auto()
     FAST = enum.auto()
@@ -3104,21 +3449,22 @@ class Species:
                  name: str,
                  icon,
                  base_stats: dict,
-                 pokemon_types: list,
+                 types: list,
                  level_up_moves: dict,
                  tutor_moves: list,
                  tm_moves: list,
                  weight: int,
                  growth_rate: GrowthRates,
-                 ev_yield: int,
+                 ev_yield: dict,
                  experience_yield: int,
                  base_friendship: int,
-                 catch_rate: int):
+                 catch_rate: int,
+                 ball_type: str = "Poke Ball"):
         self.dex = dex
         self.icon = icon
         self.name = name
         self.base_stats = base_stats
-        self.pokemon_types = pokemon_types
+        self.pokemon_types = [t if type(t) is PokemonType else pokemon_types[t] for t in types]
         self.level_up_moves = level_up_moves
         self.tutor_moves = tutor_moves
         self.tm_moves = tm_moves
@@ -3128,13 +3474,29 @@ class Species:
         self.experience_yield = experience_yield
         self.base_friendship = base_friendship
         self.catch_rate = catch_rate
+        self.ball_type = ball_type
 
     def get_icon(self):
         if type(self.icon) is str:
-            return Image.open(os.path.join("test sprites", self.icon)).convert('RGBA')
+            path = os.path.join("test sprites", self.icon)
+            path = honse_data.get_absolute_path(path)
+            return Image.open(path).convert('RGBA')
         else:
-            pass
-            # saurbot stuff will go here
+            return self.icon
+         
+class GenderEnum(enum.Enum):
+    MALE = enum.auto()
+    FEMALE = enum.auto()
+    UNKNOWN = enum.auto()
+
+def opposite_gender_check(pokemon1: "Pokemon", pokemon2: "Pokemon"):
+    if pokemon1.gender == GenderEnum.MALE and pokemon2.gender == GenderEnum.FEMALE:
+        return True
+    elif pokemon2.gender == GenderEnum.MALE and pokemon1.gender == GenderEnum.FEMALE:
+        return True
+    else:
+        return False
+
 class Pokemon:
     def __init__(self,
                  species: Species,
@@ -3149,6 +3511,7 @@ class Pokemon:
                  shiny: bool = False,
                  pokerus: bool = False,
                  size_multiplier: int = 1,
+                 gender: GenderEnum = None
                  ):
         self.species = species
         self.level = level
@@ -3170,6 +3533,9 @@ class Pokemon:
         else:
             self.name = nickname
         self.size_multiplier = size_multiplier
+        self.gender = gender
+        if self.gender is None:
+            self.gender = random.choice([GenderEnum.MALE, GenderEnum.FEMALE])
 
     def get_nature_value(self):
         return honse_data.NATURES[self.nature]
@@ -3228,6 +3594,9 @@ class Character:
         # hp
         self.max_hp = self.get_max_hp()
         self.hp = self.max_hp
+        self.display_hp = self.hp
+        # when a pokemon is captured, its hp when captured is saved and then the ui displays that
+        self.hp_when_captured = -1
         # sounds
         self.hit_sound_to_play = None
         self.play_fainted_sound = False
@@ -3286,6 +3655,59 @@ class Character:
                 self.cooldowns[i] = 60
         self.ui_element = honse_data.UIElement(ui_options, ui_x, ui_y, self)
         self.spawned_in = False
+        self.captured = False
+        # these are the amounts of damage the pokemon has taken since display_hp was last equal to hp
+        # in other words, if this list is not empty, the hp bar ui element is currently scrolling, and the items in this list determine how fast it needs to scroll
+        self.scrolling_damage_instances = []
+        self.scrolling_healing_instances = []
+        self.in_pokeball = False
+        self.pokeball_image = None
+        self.pokeball_surface = None
+        self.captured_image = None
+        self.captured_surface = None
+        self.pokeball_name = ""
+
+    def game_end(self):
+        if self.hp_when_captured > -1 and self.pokemon.ball_type == "Heal Ball":
+            self.pokemon.hp = self.max_hp
+        elif self.game.encounter_type == EncounterTypes.PVP_TRAINER_BATTLE:
+            # pvp hp changes are temporary
+            pass
+        else:
+            current_hp = max(self.pokemon.hp, self.hp)
+            self.pokemon.hp = min(current_hp, self.pokemon.hp)
+
+    def capture(self, team):
+        self.hp_when_captured = self.hp
+        self.hp = 0
+        if self.pokeball_name == "Friend Ball":
+            self.pokemon.friendship = 200
+        self.pokemon.ball_type = self.pokeball_name
+        team.captured_pokemon.append(self.pokemon)
+
+    def update_display_hp(self):
+        if self.display_hp != self.hp:
+            if self.display_hp > self.hp:
+                hp_change_instances = self.scrolling_damage_instances
+                self.scrolling_healing_instances = []
+            else:
+                hp_change_instances = self.scrolling_healing_instances
+                self.scrolling_damage_instances = []
+            change_amount = 0
+            for instance in hp_change_instances:
+                if instance["pause frames"] > 0:
+                    instance["pause frames"] -= 1
+                else:
+                    change_amount += instance["hp change"]
+            hp_difference = abs(self.display_hp - self.hp)
+            if abs(change_amount) > hp_difference:
+                self.display_hp = self.hp
+                self.scrolling_damage_instances = []
+                self.scrolling_healing_instances = []
+            else:
+                self.display_hp += change_amount
+        if self.display_hp < 0:
+            self.display_hp = 0
 
     def is_wild(self):
         return self.team.wild
@@ -3326,16 +3748,23 @@ class Character:
         if old_species != self.current_species and old_size_modifier != self.current_size_modifier:
             self.get_image()
 
-    def get_hp_as_percent(self):
-        if self.is_fainted():
-            return 0
-        elif self.hp == self.max_hp:
+    def get_display_hp_percent(self):
+        if self.display_hp == self.max_hp:
             return 100
-        return int(max(1, min(99, int(self.hp * 100 / self.max_hp))))
+        elif self.display_hp == 0:
+            return 0
+        else:
+            return int(max(1, min(99, int(self.display_hp * 100 / self.max_hp))))
 
     def spawn_in(self):
         for i in range(honse_data.MAX_SPAWN_ATTEMPTS):
-            self.position = np.array(self.game.spawn_in_area(self.team.team_id), dtype=float)
+            # old area based system:
+            #self.position = np.array(self.game.spawn_in_area(self.team.team_id), dtype=float)
+            x = random.randint(0, self.game.SCREEN_WIDTH-1)
+            y = random.randint(0, self.game.SCREEN_HEIGHT-1)
+            if self.game.background_bw.getpixel((x, y)) == 0:
+                continue
+            self.position = np.array([x, y], dtype=float)
             colliding = False
             for character in self.game.characters:
                 if character is self:
@@ -3404,6 +3833,32 @@ class Character:
             self.intangible_surface = None
             self.fainted_surface = None
 
+    def put_in_pokeball(self, ball_name):
+        self.in_pokeball = True
+        # if the last time this pokemon was in a pokeball it was the same pokeball there is no need to update this data
+        if self.pokeball_name != ball_name:
+            self.pokeball_name = ball_name
+            image_path = os.path.join("vfx", "pokeballs", self.pokeball_name.lower().replace(" ", "")+".png")
+            image = Image.open(image_path).convert("RGBA")
+            cropped_image = image.getbbox()
+            cropped_image = image.crop(cropped_image)
+            size_multiplier = self.base_size_multiplier * (1/self.game.zoom_level)
+            new_size = (int(cropped_image.width * size_multiplier), int(cropped_image.height * size_multiplier))
+            cropped_image = cropped_image.resize(new_size)
+            self.pokeball_image = cropped_image
+            if self.game.pygame_mode:
+                self.pokeball_surface = honse_data.image_to_surface(self.pokeball_image)
+            r, g, b, a = cropped_image.split()
+            captured_image = Image.merge(
+                "RGBA", (r, g, b, a.point(lambda x: int(x * 2 / 3)))
+            )
+            self.captured_image = captured_image
+            if self.game.pygame_mode:
+                self.captured_surface = honse_data.image_to_surface(self.captured_image)
+
+    def take_out_of_pokeball(self):
+        self.in_pokeball = False
+
     def same_team(self, other):
         return self.team is other.team
 
@@ -3470,7 +3925,7 @@ class Character:
         return self.hp == 0
 
     def is_intangible(self):
-        return self.intangibility > 0 or self.in_hitstop() or self.is_fainted()
+        return self.intangibility > 0 or self.in_hitstop() or self.is_fainted() or self.captured
 
     def is_invulnerable(self):
         return self.invulnerability > 0 or self.in_hitstop() or self.is_fainted()
@@ -3589,7 +4044,6 @@ class Character:
                     if move.is_valid_target(self, target) == False:
                         continue
                     self.tried_to_attack_this_frame = True
-                    can_move = True
                     # if an effect that would block the move usage triggers, it returns True
                     can_move = not activate_effect(EffectTrigger.ON_TRY_USE_MOVE, self, False, {"move": move})
                     if can_move:
@@ -3666,6 +4120,7 @@ class Character:
     # Lina functions end here
 
     def update(self):
+        self.update_display_hp()
         if self.in_hitstop():
             self.tick_hitstop()
         else:
@@ -3689,7 +4144,7 @@ class Character:
 
     def move(self):
         frozen = False
-        if self.in_hitstop() or self.current_speed == 0:
+        if self.in_hitstop() or self.current_speed == 0 or self.in_pokeball:
             frozen = True
         if self.play_fainted_sound and self.current_speed == 0:
             self.game.play_sound("In-Battle Faint No Health")
@@ -3711,7 +4166,13 @@ class Character:
             self.position += self.velocity
 
     def draw(self):
-        if self.is_fainted():
+        if self.in_pokeball and self.is_fainted():
+            surface = self.captured_surface
+            image = self.captured_image
+        elif self.in_pokeball:
+            surface = self.pokeball_surface
+            image = self.pokeball_image
+        elif self.is_fainted():
             surface = self.fainted_surface
             image = self.fainted_image
         elif (
@@ -3729,8 +4190,23 @@ class Character:
             image,
         )
 
+    def create_damage_instance(self, hp_change: int, healing: bool, from_attack: bool):
+        max_hp_change_per_frame = math.ceil(self.max_hp * honse_data.MAX_HP_BAR_DEPLETION_PER_FRAME)
+        min_hp_change_per_frame = math.ceil(self.max_hp * honse_data.MIN_HP_BAR_DEPLETION_PER_FRAME)
+        hp_change_per_frame = math.ceil(hp_change / honse_data.TARGET_HP_DEPLETION_FRAMES)
+        hp_change_per_frame = max(min_hp_change_per_frame, min(max_hp_change_per_frame, hp_change_per_frame))
+        if not healing:
+            hp_change_per_frame *= -1
+        result = {"hp change": hp_change_per_frame,
+                  "pause frames": 20 if from_attack else 0
+                  }
+        if healing:
+            self.scrolling_healing_instances.append(result)
+        else:
+            self.scrolling_damage_instances.append(result)
+
     def do_damage(self, source, damage, attack=None, silent=False):
-        if self.is_fainted() or damage==0 or self.game.game_end:
+        if self.is_fainted() or damage==0 or self.game.game_end or self.is_intangible():
             return 0
         damage = max(1, int(damage))
         if attack is not None and attack.substitute_activated:
@@ -3738,9 +4214,10 @@ class Character:
         else:
             if damage > self.hp:
                 damage = self.hp
+            self.create_damage_instance(damage, healing=False, from_attack=attack is not None)
             self.hp -= damage
             self.battle_stats["damage taken"] += damage
-            if source is not None and not self.same_team(source):
+            if source is not None and not self.team.on_allied_team(source):
                 source.battle_stats["damage dealt"] += damage
             if not silent:
                 percent = int(max(1, (100 * damage) // self.max_hp))
@@ -3754,7 +4231,7 @@ class Character:
                     self.game.display_message(f"Last life!", "gen4", BATTLE_TEXT_SIZE["medium"], (150, 25, 25, 255))
             if self.is_fainted():
                 self.battle_stats["fainted"] = True
-                if source is not None and not self.same_team(source):
+                if source is not None and not self.team.on_allied_team(source):
                     source.battle_stats["kos"] += 1
                 self.play_fainted_sound = True
                 activate_effect(EffectTrigger.ON_FAINT, self, effect_kwargs={"attack": attack})
@@ -3763,7 +4240,7 @@ class Character:
 
 
     def do_healing(self, source, healing,  silent=False, bypass_heal_block=False):
-        if self.is_fainted() or healing==0 or self.game.game_end:
+        if self.is_fainted() or healing==0 or self.game.game_end or self.is_intangible():
             return 0
         healing = max(1, int(healing))
         # afaik nothing bypasses heal block other than z moves, but its good to have the option
@@ -3774,9 +4251,10 @@ class Character:
         max_hp = self.max_hp
         if healing + self.hp > max_hp:
             healing = max_hp - self.hp
+        self.create_damage_instance(healing, healing=True, from_attack=False)
         self.hp += healing
         self.battle_stats["healing received"] += healing
-        if source is not None and self.same_team(source):
+        if source is not None and self.team.on_allied_team(source):
             source.battle_stats["healing given"] += healing
         if not silent:
             percent = int(max(1, (100 * healing) // self.max_hp))
@@ -3890,6 +4368,7 @@ class Move:
         self.spread_can_hit_enemies = options.spread_can_hit_enemies
         self.ohko = options.ohko
         self.cooldown = options.cooldown
+        self.suicide = options.suicide
         if self.category == MoveCategories.STATUS:
             if self.base_knockback is None:
                 self.base_knockback = 0
@@ -3931,13 +4410,13 @@ class Move:
 
     def get_default_cooldown(self):
         if self.power == 0:
-            cooldown = 300
+            cooldown = 600
         else:
-            # 10 BP = 1 sec cooldown
-            cooldown = (60 * (self.power / 10))
-        if not self.multihit:
-            # non multihit moves have an addition 2 secs cooldown
-            cooldown += 120
+            # 10 BP = 2 sec cooldown
+            cooldown = (120 * (self.power / 10))
+            if not self.multihit:
+                # non multihit moves have an additional 3 secs cooldown
+                cooldown += 180
         modifier = 1
         if self.spread_radius > 0:
             modifier *= 1.4
@@ -3984,9 +4463,9 @@ class Move:
         if self.target == MoveTarget.USER:
             return user is target
         elif self.target == MoveTarget.ENEMY:
-            return not user.same_team(target)
+            return not user.team.on_allied_team(target)
         elif self.target == MoveTarget.ALLY:
-            return user.same_team(target)
+            return user.team.on_team(target) and not user is target
         elif self.target == MoveTarget.OTHERS:
             return user is not target
         else:
@@ -4239,6 +4718,7 @@ class Attack:
         self.apply_non_secondaries()
         self.trigger_after_use_effects()
         self.create_spread_hazard()
+        self.ko_user_if_self_destruct()
         if self.success is None and self.move.spread_radius == 0:
             self.success = False
         self.determine_effects_to_play()
@@ -4299,13 +4779,17 @@ class Attack:
                 if self.move.recoil > 0:
                     recoil = max(1, int(self.damage_dealt * self.move.recoil))
                     if self.user.do_damage(self.user, recoil, silent=True) > 0:
-                        self.user.game.display_message(f"{self.target.get_name()}$DEFAULT is damaged by recoil!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
+                        self.user.game.display_message(f"{self.user.get_name()}$DEFAULT is damaged by recoil!", "gen4", BATTLE_TEXT_SIZE["medium"], (0, 0, 0, 255))
     
     def after_doing_damage(self):
         if self.damage_dealt > 0 or self.endure_activated:
             self.trigger_on_hit_effects()
             self.apply_secondaries()
             self.success = True
+
+    def ko_user_if_self_destruct(self):
+        if self.move.suicide:
+            self.user.do_damage(self.user, self.user.hp, silent=True)
 
     def determine_effects_to_play(self):
         if self.protect_activated:
@@ -4400,285 +4884,8 @@ class MoveOptions:
     spread_can_hit_enemies: bool = True
     ohko: bool = False
     cooldown: int|None = None
-'''
-MOVE_OPTIONS = {
-    "confusion damage": MoveOptions(crit_stage=-1),
-    "quick attack": MoveOptions(
-        contact=True,
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=CooldownReductionEffect,options=CooldownReductionEffectOptions(cooldown_reduction_amount=80),affects_user=True)]
-            )]),
-    "giga drain": MoveOptions(drain=0.5),
-    "heat wave": MoveOptions(
-        accuracy=90,
-        secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=BurnEffect,options=BasicDamagingEffectOptions(),affects_user=False)],
-                chance=0.1)],
-        spread_radius=120,
-        spread_can_hit_allies=False,
-        spread_options=HazardOptions(
-                           lifetime=40,
-                           hazard_set_radius_growth_time=10,
-                           active_radius_growth_time=15,
-                           active_full_radius_duration=15,
-                           immune_timer=honse_data.A_LOT_OF_FRAMES)
-        ),
-    "water pulse": MoveOptions(
-        accuracy=90,
-        secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=ConfusionEffect,options=EffectOptions(),affects_user=False)],
-                chance=0.2)],
-        ),
-    "aggregate": MoveOptions(
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=AggregateEffect,options=HazardClearEffectOptions(radius=200,clear_friendly_hazards=False),affects_user=True)]
-                )],
-        ),
-    "heal bell": MoveOptions(
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=HealBellEffect,options=None,affects_user=True)]
-                )],
-        ),
-    "belly drum": MoveOptions(
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=BellyDrumEffect,options=EffectOptions(),affects_user=True)]
-                )]),
-    "camouflage": MoveOptions(
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=CamouflageEffect,options=EffectOptions(lifetime=1800),affects_user=True)]
-                )]),
-    "block": MoveOptions(
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=MoveSpeedModificationEffect,options=MoveSpeedModificationEffectOptions(modifier=0.25),affects_user=False)]
-                )]),
-    "psyshock": MoveOptions(defense_stat_override="DEF"),
-    "superpower": MoveOptions(
-        contact=True,
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=StatStageEffect,options=StatOptions(positive=False,stats={"ATK":-1,"DEF":-1}),affects_user=True)]
-                )]),
-    "blizzard": MoveOptions(
-        accuracy=70,
-        secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=FreezeEffect,options=BasicDamagingEffectOptions(),affects_user=False)],
-                chance=0.1)],
-        spread_radius=120,
-        spread_can_hit_allies=False,
-        spread_options=HazardOptions(
-                           lifetime=40,
-                           hazard_set_radius_growth_time=10,
-                           active_radius_growth_time=15,
-                           active_full_radius_duration=15,
-                           immune_timer=honse_data.A_LOT_OF_FRAMES)
-        ),
-    "thunder": MoveOptions(
-        accuracy=70,
-        secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=ParalysisEffect,options=BasicDamagingEffectOptions(),affects_user=False)],
-                chance=0.3)]
-        ),
-    "endure": MoveOptions(
-        animation=honse_particles.buff_spawner_animation,
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=EndureEffect,options=EffectOptions(lifetime=600),affects_user=True)]
-                )],
-        ),
-    "protect": MoveOptions(
-        animation=honse_particles.barrier_animation,
-        sound="Protect",
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=ProtectEffect,options=ProtectOptions(),affects_user=True)]
-                )],
-        ),
-    "kings shield": MoveOptions(
-        animation=honse_particles.barrier_animation,
-        sound="Protect",
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[MoveSecondary(effect=ProtectEffect,
-                                       options=ProtectOptions(
-                                           unprotected_categories=[MoveCategories.STATUS],
-                                           contact_effect=StatStageEffect,
-                                           contact_effect_options=StatOptions(positive=False,stats={"ATK":-2})),
-                                       affects_user=True)]
-                )],
-        ),
-    "bide": MoveOptions(
-        attack_class=BideAttack,
-        cooldown=750),
-    "follow me": MoveOptions(
-        animation=honse_particles.buff_spawner_animation,
-        cooldown=1200,
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[
-                    MoveSecondary(effect=CooldownReductionEffect,options=CooldownReductionEffectOptions(cooldown_reduction_amount=30),affects_user=True),
-                    MoveSecondary(effect=CenterOfAttentionEffect,options=CenterOfAttentionOptions(),affects_user=True)]
-            )]
-        ),
-    "spotlight": MoveOptions(
-        animation=honse_particles.debuff_spawner_animation,
-        cooldown=1200,
-        hitstop=30,
-        non_secondary_effects=[
-            SecondaryGroup(
-                effects=[
-                    MoveSecondary(effect=CenterOfAttentionEffect,options=CenterOfAttentionOptions(),affects_user=False)]
-            )]
-        ),
-    }
+    suicide: bool = False
 
-MOVES = {
-    "Quick Attack": Move(
-        name="Quick Attack",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.PHYSICAL,
-        target=MoveTarget.ENEMY,
-        power=40,
-        options=MOVE_OPTIONS["quick attack"]),
-    "Giga Drain": Move(
-        name="Giga Drain",
-        pkmn_type=pokemon_types["Grass"],
-        category=MoveCategories.SPECIAL,
-        target=MoveTarget.ENEMY,
-        power=75,
-        options=MOVE_OPTIONS["giga drain"]),
-    "Heat Wave": Move(
-        name="Heat Wave",
-        pkmn_type=pokemon_types["Fire"],
-        category=MoveCategories.SPECIAL,
-        target=MoveTarget.ENEMY,
-        power=95,
-        options=MOVE_OPTIONS["heat wave"]),
-    "Water Pulse": Move(
-        name="Water Pulse",
-        pkmn_type=pokemon_types["Water"],
-        category=MoveCategories.SPECIAL,
-        target=MoveTarget.ENEMY,
-        power=60,
-        options=MOVE_OPTIONS["water pulse"]),
-    "Psyshock": Move(
-        name="Psyshock",
-        pkmn_type=pokemon_types["Psychic"],
-        category=MoveCategories.SPECIAL,
-        target=MoveTarget.ENEMY,
-        power=80,
-        options=MOVE_OPTIONS["psyshock"]),
-    "Superpower": Move(
-        name="Superpower",
-        pkmn_type=pokemon_types["Fighting"],
-        category=MoveCategories.PHYSICAL,
-        target=MoveTarget.ENEMY,
-        power=120,
-        options=MOVE_OPTIONS["superpower"]),
-    "Thunder": Move(
-        name="Thunder",
-        pkmn_type=pokemon_types["Electric"],
-        category=MoveCategories.SPECIAL,
-        target=MoveTarget.ENEMY,
-        power=110,
-        options=MOVE_OPTIONS["thunder"]),
-    "Blizzard": Move(
-        name="Blizzard",
-        pkmn_type=pokemon_types["Ice"],
-        category=MoveCategories.SPECIAL,
-        target=MoveTarget.ENEMY,
-        power=110,
-        options=MOVE_OPTIONS["blizzard"]),
-    "Protect": Move(
-        name="Protect",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["protect"]),
-    "Endure": Move(
-        name="Endure",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["endure"]),
-    "Bide": Move(
-        name="Bide",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.PHYSICAL,
-        target=MoveTarget.ENEMY,
-        power=0,
-        options=MOVE_OPTIONS["bide"]),
-    "Follow Me": Move(
-        name="Follow Me",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["follow me"]),
-    "Spotlight": Move(
-        name="Spotlight",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.OTHERS,
-        power=0,
-        options=MOVE_OPTIONS["spotlight"]),
-    }
-MANUALLY_IMPLEMENTED_STATUS_MOVES = {
-    "Aggregate": Move(
-        name="Aggregate",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["aggregate"]),
-    "Aromatherapy": Move(
-        name="Aromatherapy",
-        pkmn_type=pokemon_types["Grass"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["heal bell"]),
-    "Belly Drum": Move(
-        name="Belly Drum",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["belly drum"]),
-    "Block": Move(
-        name="Block",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.ENEMY,
-        power=0,
-        options=MOVE_OPTIONS["block"]),
-    "Camouflage": Move(
-        name="Camouflage",
-        pkmn_type=pokemon_types["Normal"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["camouflage"]),
-    "King's Shield": Move(
-        name="King's Shield",
-        pkmn_type=pokemon_types["Steel"],
-        category=MoveCategories.STATUS,
-        target=MoveTarget.USER,
-        power=0,
-        options=MOVE_OPTIONS["kings shield"]),
-}
-'''
 
 UNOBTAINABLE_MOVES = {
     # used for sources that don't exist
@@ -4728,10 +4935,10 @@ NON_VOLATILE_STATUS_DEFAULTS = {
     },
 }
 def create_moves():
-    SIMPLE_MOVES_PATH = os.path.join("move_info", "simple_moves.txt")
-    MOVE_TARGET_OVERRIDES_PATH = os.path.join("move_info", "move_target_overrides.json")
-    MOVE_OPTIONS_PATH = os.path.join("move_info", "move_options.json")
-    MOVES_PATH = os.path.join("move_info", "honse_moves.json")
+    SIMPLE_MOVES_PATH = honse_data.get_absolute_path(os.path.join("move_info", "simple_moves.txt"))
+    MOVE_TARGET_OVERRIDES_PATH = honse_data.get_absolute_path(os.path.join("move_info", "move_target_overrides.json"))
+    MOVE_OPTIONS_PATH = honse_data.get_absolute_path(os.path.join("move_info", "move_options.json"))
+    MOVES_PATH = honse_data.get_absolute_path(os.path.join("move_info", "honse_moves.json"))
     MOVE_FLAGS_DICT = {
         "authentic": MoveFlags.AUTHENTIC,
 		"bite": MoveFlags.BITE,
@@ -4827,8 +5034,8 @@ def create_moves():
             # the others can receive a bonus
             priority_bonus = priority > 0 and priority <= 2
             move_options = all_move_options.get(move_name, {})
-            attack_stat_override = move_options.get("attack_stat_override", None)
-            defense_stat_override = move_options.get("defense_stat_override", None)
+            attack_stat_override = move_options.get("override_attack_stat", None)
+            defense_stat_override = move_options.get("override_defense_stat", None)
             ignore_attack_modifiers = move_options.get("ignore_attack_modifiers", False)
             ignore_defense_modifiers = move_options.get("ignore_defense_modifiers", False)
             ignore_evasion = move_options.get("ignore_evasion", False)
@@ -4837,6 +5044,7 @@ def create_moves():
             base_knockback = move_options.get("base_knockback", None)
             cooldown = move_options.get("cooldown", None)
             effectiveness_overrides = move_options.get("effectiveness_overrides", None)
+            suicide = move_options.get("suicide", False)
             if effectiveness_overrides is not None:
                 effectiveness_overrides = {pokemon_types[k]: v for k, v in effectiveness_overrides.items()}
             if move_name in move_target_overrides:
@@ -5220,7 +5428,8 @@ def create_moves():
                 spread_options=None if spread_radius == 0 else default_spread_options,
                 spread_can_hit_allies=spread_can_hit_allies,
                 spread_can_hit_enemies=spread_can_hit_enemies,
-                cooldown=cooldown
+                cooldown=cooldown,
+                suicide=suicide
                 )
             move = Move(
                 name=move_name,

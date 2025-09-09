@@ -4,8 +4,9 @@ import math
 import os
 from PIL import Image, ImageColor, ImageFont, ImageDraw
 
-#may break things
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+def get_absolute_path(file_name):
+    path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(path, file_name)
 
 MAX_SPAWN_ATTEMPTS = 1000
 class SpawnError(Exception):
@@ -19,8 +20,16 @@ SPEED_CAP = 30
 
 # this holds all of the fonts
 fonts = {}
+WILD_COLOR = [100, 81, 81]
 TEAM_COLORS = [[166, 10, 28], [15, 10, 166]]
 SUDDEN_DEATH_FRAMES = 2.5 * 60 * 60
+# after a pokemon is hit, the hp bar wont drop for a certain amount of frames
+TIME_BEFORE_HP_LOSS = 30
+# the amount of max hp that can visually deplete per frame
+MAX_HP_BAR_DEPLETION_PER_FRAME = 1/ 60
+MIN_HP_BAR_DEPLETION_PER_FRAME = 1 / 180
+# the amount of frames to show hp depleting after getting hit by attack
+TARGET_HP_DEPLETION_FRAMES = 90
 SOUNDS = {}
 PARTICLE_IMAGES = {
     "image": {}, "surface": {}
@@ -144,6 +153,10 @@ BAR_COLORS = {
         "move_ready": (64, 248, 88, 255),
         "move_cooldown": (64, 200, 248, 255),
         "move_locked": (200, 88, 88, 255),
+        "fainted_bg_dark": (100, 44, 44, 255),
+        "captured_light": (200, 160, 160, 255),
+        "captured_dark": (150, 120, 120, 255),
+
         }
 
 def draw_bar(game, x, y, width, height, value, color, always_display_if_not_empty=False):
@@ -152,7 +165,7 @@ def draw_bar(game, x, y, width, height, value, color, always_display_if_not_empt
         adjusted_length = 1
     game.draw_rectangle(x, y, adjusted_length, height, 0, color)
 
-def draw_health_bar(game, x, y, width, height, value, label_text, label_width):
+def draw_health_bar(game, x, y, width, height, value, label_text, label_width, captured):
     # the bar is drawn black
     # then white for the inner 5/7ths
     # then color based on value for the inner 3/7ths
@@ -168,11 +181,21 @@ def draw_health_bar(game, x, y, width, height, value, label_text, label_width):
     bar_width = width - label_width
     health_bar_x = bar_x + height_divided_by_seven
     health_bar_width = bar_width - (2*height_divided_by_seven)
-    game.draw_rectangle(x, y, width, height, 0, BAR_COLORS["blackish_bg_light"])
+    if value == 0 and not captured:
+        background_color_dark = "fainted_bg_dark"
+        background_color_light = "fainted_bg_dark"
+    else:
+        background_color_dark = "blackish_bg_dark"
+        background_color_light = "blackish_bg_light"
+    game.draw_rectangle(x, y, width, height, 0, BAR_COLORS[background_color_light])
     game.draw_rectangle(bar_x, white_bg_y, bar_width, white_bg_height, 0, BAR_COLORS["white_bg"])
-    game.draw_rectangle(health_bar_x, bar_dark_y, health_bar_width, bar_dark_height, 0, BAR_COLORS["blackish_bg_light"])
-    game.draw_rectangle(health_bar_x, bar_light_y, health_bar_width, bar_light_height, 0, BAR_COLORS["blackish_bg_dark"])
-    if value > 0.5:
+    game.draw_rectangle(health_bar_x, bar_light_y, health_bar_width, bar_dark_height, 0, BAR_COLORS[background_color_light])
+    game.draw_rectangle(health_bar_x, bar_dark_y, health_bar_width, bar_light_height, 0, BAR_COLORS[background_color_dark])
+    if captured:
+        light_color = BAR_COLORS["captured_light"]
+        dark_color = BAR_COLORS["captured_dark"]
+        value = 1
+    elif value > 0.5:
         light_color = BAR_COLORS["high_hp_light"]
         dark_color = BAR_COLORS["high_hp_dark"]
     elif value > 0.2:
@@ -188,7 +211,7 @@ def draw_health_bar(game, x, y, width, height, value, label_text, label_width):
     text_y = y + ((height - label_text.size[1]) // 2)
     label_text.draw(text_x, text_y)
 
-def draw_move_bar(game, x, y, width, height, value, label_text, label_x, locked=False):
+def draw_move_bar(game, x, y, width, height, value, label_text, label_x, locked=False, fainted=False):
     if locked:
         color = BAR_COLORS["move_locked"]
         value = 1
@@ -289,7 +312,9 @@ class UIElement:
     def draw_status_icons(self):
         volatile_status_icon = None
         non_volatile_status_icon = None
-        if len(self.status_queue):
+        if self.character.hp_when_captured > -1:
+            volatile_status_icon = "captured"
+        elif len(self.status_queue):
             volatile_status_icon = self.status_queue[0][0].status_icon
         if self.character.has_non_volatile_status:
             non_volatile_status_icon = self.character.get_non_volatile_status().status_icon
@@ -328,17 +353,23 @@ class UIElement:
                 )
 
     def update_move_and_hp_text(self):
-        new_hp = self.character.get_hp_as_percent()
+        new_hp = self.character.get_display_hp_percent()
+        if self.character.hp_when_captured > -1:
+            # new hp must change to update the ui
+            new_hp = -1
         if self.last_hp_amount != new_hp:
             self.last_hp_amount = new_hp
-            hp_ratio = self.character.hp / self.character.max_hp
+            hp_ratio = self.character.display_hp / self.character.max_hp
             if hp_ratio > 0.5:
                 color = BAR_COLORS["high_hp_light"]
             elif hp_ratio > 0.2:
                 color = BAR_COLORS["low_hp_light"]
             else:
                 color = BAR_COLORS["critical_hp_lighter"]
-            self.hp_text = HonseText(self.game, f"{self.last_hp_amount}%", self.font, self.hp_font_size, color)
+            if self.character.hp_when_captured > -1:
+                self.hp_text = HonseText(self.game, f"-", self.font, self.hp_font_size, BAR_COLORS["captured_light"])
+            else:
+                self.hp_text = HonseText(self.game, f"{self.last_hp_amount}%", self.font, self.hp_font_size, color)
             self.hp_text.get_text_image()
         for i, move in enumerate(self.character.current_moves):
             if move.name != self.move_name_strings[i]:
@@ -363,7 +394,7 @@ class UIElement:
             name_bg_color[0],
             name_bg_color[1],
             name_bg_color[2],
-            127)
+            192)
         font = self.font.get_pil_font(self.name_font_size)
         ascent, descent = font.getmetrics()
         name_bg_height = ascent + descent
@@ -397,15 +428,20 @@ class UIElement:
         if len(self.status_queue) or self.character.has_non_volatile_status:
             centered = False
         else:
-            centered = True
+            # lets see how this looks
+            #centered = True
+            centered = False
         y = self.y
         self.name_text.draw(self.x, y+self.name_y, True, centered)
         y = self.y + max(self.name_text.get_size()[1], self.status_size) + self.y_padding
-        health_value = self.character.hp / self.character.max_hp
-        draw_health_bar(self.game, self.x, y, self.width, self.hp_bar_height, health_value, self.hp_text, self.hp_label_width)
+        health_value = max(0, self.character.display_hp / self.character.max_hp)
+        if self.character.hp_when_captured > -1:
+            captured = True
+        else:
+            captured = False
+        draw_health_bar(self.game, self.x, y, self.width, self.hp_bar_height, health_value, self.hp_text, self.hp_label_width, captured)
         y += self.y_padding + self.hp_bar_height
         self.draw_status_icons()
-        fainted = self.character.is_fainted()
         for i in range(4):
             try:
                 if self.move_name_texts[i] is None:
@@ -418,10 +454,10 @@ class UIElement:
                 x = self.x + self.right_move_x
             if i == 2:
                 y += self.move_bar_height + self.y_padding
+            locked = self.character.is_move_locked(i)
             max_cooldown = self.character.current_moves[i].cooldown
             current_cooldown = self.character.cooldowns[i]
-            locked = self.character.is_move_locked(i)
-            draw_move_bar(self.game, x, y, self.move_bar_width, self.move_bar_height, current_cooldown/max_cooldown, self.move_name_texts[i], x + self.move_name_padding, locked=locked or fainted)
+            draw_move_bar(self.game, x, y, self.move_bar_width, self.move_bar_height, current_cooldown/max_cooldown, self.move_name_texts[i], x + self.move_name_padding, locked=locked or self.character.is_fainted())
 
 # text_surface = self.message_fonts[font_key][0].render(text, False, color)
 class HonseFont:

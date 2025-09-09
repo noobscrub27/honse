@@ -38,5 +38,11 @@
 	"Sacred Sword": {
 		"ignore_defense_modifiers": true,
 		"ignore_evasion": true
+	},
+	"Self-Destruct": {
+		"suicide": true
+	},
+	"Explosion": {
+		"suicide": true
 	}
 }

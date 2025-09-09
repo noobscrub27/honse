@@ -1,4 +1,5 @@
 from collections import defaultdict
+from email.policy import default
 import tempfile
 import pygame
 import random
@@ -20,10 +21,8 @@ import numpy as np
 from pydub import AudioSegment
 import datetime
 import pstats
-import sys
-
-#may break things
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+import colorsys
+from video_uploader import video_uploader
 
 # Check https://habr.com/ru/articles/545850/
 def to_numpy(im):
@@ -49,20 +48,27 @@ def to_numpy(im):
 class HonseGame:
     def __init__(
         self,
-        json_path,
-        background,
-        music_folder,
-        teams,
-        pygame_mode,
-        video_mode,
-        width=1920,
-        fps=60,
-        zoom_level=1
+        json_path: str,
+        background: str,
+        background_bw: str,
+        music_folder: str,
+        teams: list,
+        pygame_mode: bool,
+        video_mode: bool,
+        environment: honse_pokemon.Environments,
+        encounter_type: honse_pokemon.EncounterTypes,
+        default_weather: honse_pokemon.Weather,
+        daytime: bool,
+        width: int = 1920,
+        fps: int = 60,
+        zoom_level: float = 1
     ):
         self.success = False
+        self.background_bw = Image.open(background_bw).convert("1")
+        self.game_complete_text = ""
         self.pygame_mode = pygame_mode and honse_data.PYGAME_ENABLED
         self.video_mode = video_mode
-        self.game_end_timer = 150
+        self.game_end_timer = 300
         self.game_end = False
         self.SCREEN_WIDTH = width
         self.SCREEN_HEIGHT = int(width * 9/16)
@@ -91,6 +97,7 @@ class HonseGame:
         for i, team in enumerate(self.teams):
             team.team_id = i
             team.in_battle = True
+            team.game = self
             for mon in team.pokemon:
                 self.characters.append(mon.to_character(
                     game=self,
@@ -123,19 +130,22 @@ class HonseGame:
         self.current_frame_draw = None
         now = datetime.datetime.now()
         now_text = now.strftime("%m-%d-%Y %H-%M-%S ")
-        self.video_out_path = os.path.join("output", now_text+"output.mp4")
-        self.log_out_path = os.path.join("output", now_text+"log.txt")
+        self.video_out_path = honse_data.get_absolute_path(os.path.join("output", now_text+"output.mp4"))
+        self.log_out_path = honse_data.get_absolute_path(os.path.join("output", now_text+"log.txt"))
         self.draw_every_nth_frame = 1
-        music_folder = os.path.join("bgm", music_folder)
+        music_folder = honse_data.get_absolute_path(os.path.join("bgm", music_folder))
         files_in_music_folder = os.listdir(music_folder)
-        self.music = os.path.join(music_folder, random.choice(files_in_music_folder))
+        self.music = honse_data.get_absolute_path(os.path.join(music_folder, random.choice(files_in_music_folder)))
         self.sound_events = []
         # this is stored in the game bc i want all the statuses to update at the same time
         # i think it will look nice :)
         self.update_status_icons_in_n_frames = honse_data.STATUS_ICON_BLINK_LENGTH
-        self.environment_type = honse_pokemon.ENVIRONMENTS["grass"]
         # field effects should eventually be moved to a system similar to effects for pokemon
-        self.weather = honse_pokemon.Weather.CLEAR
+        self.default_weather = default_weather
+        self.weather = self.default_weather
+        self.environment = environment
+        self.encounter_type = encounter_type
+        self.daytime = daytime
         self.load_map()
         self.play_music()
         for character in self.characters:
@@ -148,7 +158,7 @@ class HonseGame:
 
     def font_setup(self):
         self.message_fonts = {
-            "gen4": honse_data.HonseFont(self, "gen4", os.path.join("fonts", "pokemon-gen-4-fullwidth", "pokemon-gen-4-fullwidth.otf"))
+            "gen4": honse_data.HonseFont(self, "gen4", honse_data.get_absolute_path(os.path.join("fonts", "pokemon-gen-4-fullwidth", "pokemon-gen-4-fullwidth.otf")))
         }
         self.message_y_offset = 5
         self.message_x_offset = 10
@@ -663,6 +673,8 @@ class HonseGame:
                     character.update()
                 for hazard in self.hazards:
                     hazard.update()
+                for team in self.teams:
+                    team.update()
 
                 # move loop
                 for character in speed_sorted_characters:
@@ -678,9 +690,9 @@ class HonseGame:
                 # draw hazards
                 for hazard in self.hazards:
                     hazard.draw()
-                # fainted characters should appear below other characters. Draw them first
+                # fainted characters and captured characters should appear below other characters. Draw them first
                 for character in sorted(
-                    self.characters, key=lambda x: 0 if x.is_fainted() else 1
+                    self.characters, key=lambda x: 0 if x.is_fainted() or x.in_pokeball else 1
                 ):
                     character.draw()
 
@@ -712,6 +724,8 @@ class HonseGame:
                         self.running = False
                         for team in self.teams:
                             team.in_battle = False
+                            for character in team.characters:
+                                character.game_end()
         except KeyboardInterrupt:
             self.running = False
         finally:
@@ -723,7 +737,8 @@ class HonseGame:
             end_timestamp = datetime.datetime.now().timestamp()
             time_elapsed = end_timestamp - start_timestamp
             fps = self.frame_count / time_elapsed
-            print(f"Game complete in {time_elapsed:.2f} seconds ({self.frame_count} frames). FPS: {fps:.2f}")
+            self.game_complete_text = f"Game complete in {time_elapsed:.2f} seconds ({self.frame_count} frames). FPS: {fps:.2f}"
+            print(self.game_complete_text)
             with open(self.log_out_path, "w") as f:
                 for message in self.message_log:
                     f.write(message[0]+"\n")
@@ -860,16 +875,39 @@ TEST_SPECIES = [
                           {}, [], [], 10, honse_pokemon.GrowthRates.MEDIUM_FAST, {}, 0, 140, 45),
     ]
 
+def saurbot_test(teams):
+    game = HonseGame(
+        json_path = "map05.json",
+        background = "map05.png",
+        background_bw = "map05bw.png",
+        music_folder = "wild",
+        teams = teams,
+        pygame_mode = True,
+        video_mode = True,
+        environment = honse_pokemon.Environments.INDOORS,
+        encounter_type = honse_pokemon.EncounterTypes.WILD_ENCOUNTER,
+        default_weather = honse_pokemon.Weather.CLEAR,
+        daytime = True)
+    game.main_loop()
+    return game
+
+def get_random_player_color():
+    h = random.random()
+    s = random.uniform(0.8, 1)
+    v = random.uniform(0.6, 0.8)
+    return [round(i * 255) for i in colorsys.hsv_to_rgb(h,s,v)]
+
 def test_game(games_to_play):
     moves_list = list(honse_pokemon.MOVES.values())
     for i in range(games_to_play):
         print(f"Starting game {i+1}/{games_to_play}.")
-        number_of_teams = 2
+        number_of_teams_player_teams = 2
         pokemon_per_team = 3
+        number_of_wild_pokemon = 3
         level = 100
         teams = []
-        for i in range(number_of_teams):
-            teams.append(honse_pokemon.Team(f"Team {i+1}", honse_data.TEAM_COLORS[i]))
+        for i in range(number_of_teams_player_teams):
+            teams.append(honse_pokemon.Team(f"Player {i+1}", get_random_player_color()))
             for j in range(pokemon_per_team):
                 species = random.choice(TEST_SPECIES)
                 stats = get_test_stats()
@@ -878,17 +916,49 @@ def test_game(games_to_play):
                     level = level,
                     experience = 0,
                     moves = random.sample(moves_list, 4),
+                    #moves = [honse_pokemon.MOVES["Helping Hand"], honse_pokemon.MOVES["Flare Blitz"], honse_pokemon.MOVES["Take Down"]],
+                    #moves = [honse_pokemon.MOVES["Explosion"]],
                     nature = stats["nature"],
                     ivs = stats["ivs"],
                     evs = stats["evs"],
-                    friendship = 255)
+                    friendship = 70)
                 teams[-1].pokemon.append(mon)
-
-        game = HonseGame("map03bw.json", "map03.png", "wild", teams, True, True)
+            teams[-1].ball_type = "Ultra Ball"
+            teams[-1].balls = 10
+            teams[-1].capture_threshold = 0.2
+        for i in range(number_of_wild_pokemon):
+            teams.append(honse_pokemon.Team(f"Wild Pokemon {i+1}", honse_data.WILD_COLOR))
+            species = random.choice(TEST_SPECIES)
+            stats = get_test_stats()
+            mon = honse_pokemon.Pokemon(
+                species = species,
+                level = level,
+                experience = 0,
+                moves = random.sample(moves_list, 4),
+                #moves = [honse_pokemon.MOVES["Helping Hand"], honse_pokemon.MOVES["Flare Blitz"], honse_pokemon.MOVES["Take Down"]],
+                nature = stats["nature"],
+                ivs = stats["ivs"],
+                evs = {"HP": 0, "ATK": 0, "DEF": 0, "SPA": 0, "SPD": 0, "SPE": 0},
+                friendship = 70)
+            teams[-1].pokemon.append(mon)
+            teams[-1].wild = True
+        game = HonseGame(
+            json_path = "map05.json",
+            background = "map05.png",
+            background_bw = "map05bw.png",
+            music_folder = "wild",
+            teams = teams,
+            pygame_mode = True,
+            video_mode = True,
+            environment = honse_pokemon.Environments.INDOORS,
+            encounter_type = honse_pokemon.EncounterTypes.WILD_ENCOUNTER,
+            default_weather = honse_pokemon.Weather.CLEAR,
+            daytime = True)
         game.main_loop()
     print(honse_data.BUG_FINDER.get_found_bugs())
 
 def create_sounds():
+    DIR = honse_data.get_absolute_path("sfx_wave")
     DIR = "sfx_wave"
     files = os.listdir(DIR)
     for file in files:
@@ -920,6 +990,7 @@ def add_to_particle_images(key, images):
 
 def load_image_particles():
     path = os.path.join("vfx", "particles")
+    path = honse_data.get_absolute_path(path)
     def get_image(filename):
         return Image.open(os.path.join(path, filename))
     # punch
@@ -953,18 +1024,17 @@ def load_image_particles():
 
 def load_status_icons():
     path = os.path.join("vfx", "status icons")
+    path = honse_data.get_absolute_path(path)
     files = os.listdir(path)
     for file in files:
         no_file_extension = file.removesuffix(".png")
         file_path = os.path.join(path, file)
         image = Image.open(file_path)
         honse_data.STATUS_IMAGES["image"][no_file_extension] = image
-        print(no_file_extension)
         if honse_data.PYGAME_ENABLED:
             honse_data.STATUS_IMAGES["surface"][no_file_extension] = honse_data.image_to_surface(image)
         else:
             honse_data.STATUS_IMAGES["surface"][no_file_extension] = None
-    print(honse_data.STATUS_IMAGES)
 
 def setup_honse_game():
     if honse_data.PYGAME_ENABLED:
@@ -976,16 +1046,17 @@ def setup_honse_game():
     print(f"Number of moves: {len(honse_pokemon.MOVES)}")
 
 if __name__ == "__main__":
-    '''
-    honse_data.PYGAME_ENABLED = True
+    
+    honse_data.PYGAME_ENABLED = False
     pygame.init()
     pygame.mixer.init()
-    '''
+    
     setup_honse_game()
     cProfile.run("test_game(1)", sort="cumtime", filename="res")
     p = pstats.Stats("res")
     p.strip_dirs()
     p.sort_stats("cumulative").print_stats(40)
-    pygame.quit()
+    if honse_data.PYGAME_ENABLED:
+        pygame.quit()
 
 

@@ -368,3 +368,7 @@ honse/res
 /honse/output
 /honse/video uploader
 /honse/video_uploader
+/honse/credentials.json
+/honse/honse_environment
+/honse/honse.egg-info
+*.py

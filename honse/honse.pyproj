@@ -25,6 +25,17 @@
     <Compile Include="honse_data.py" />
     <Compile Include="honse_particles.py" />
     <Compile Include="honse_pokemon.py" />
+    <Compile Include="video_uploader\video_uploader.py" />
+    <Compile Include="__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="video_uploader\" />
+    <Folder Include="video_uploader\__pycache__\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="video_uploader\client_secrets.json" />
+    <Content Include="video_uploader\credentials.json" />
+    <Content Include="video_uploader\__pycache__\VideoUploader.cpython-312.pyc" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
